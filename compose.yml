@@ -1,15 +1,15 @@
 services:
-  main-service:
+  ewm-service:
     build: main-service
     image: explore-with-me-main-service
     container_name: explore-with-me-main-service
     ports:
       - "8080:8080"
     depends_on:
-      - stat-server
+      - stats-server
       - main-service-db
     environment:
-      - STAT_SERVER_URL=http://stat-server:9090
+      - STAT_SERVER_URL=http://stats-server:9090
       - SPRING_DATASOURCE_URL=jdbc:postgresql://main-service-db:5432/mainservicedb
       - SPRING_DATASOURCE_USERNAME=mainservice
       - SPRING_DATASOURCE_PASSWORD=mainservice
@@ -17,7 +17,7 @@ services:
       - "/etc/localtime:/etc/localtime:ro"
       - "/etc/timezone:/etc/timezone:ro"
 
-  stat-server:
+  stats-server:
     build: stat/stat-server
     image: explore-with-me-stat-server
     container_name: explore-with-me-stat-server

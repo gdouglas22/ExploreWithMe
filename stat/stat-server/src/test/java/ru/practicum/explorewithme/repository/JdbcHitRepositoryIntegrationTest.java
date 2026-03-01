@@ -22,12 +22,15 @@ class JdbcHitRepositoryIntegrationTest {
     private JdbcHitRepository repository;
 
     @Test
-    void saveShouldPersistId() {
-        HitEntity hit = new HitEntity(null, "ewm-main-service", "/events/1", "192.168.0.1", LocalDateTime.now());
+    void saveShouldPersistRecord() {
+        LocalDateTime now = LocalDateTime.now();
+        HitEntity hit = new HitEntity(null, "ewm-main-service", "/events/1", "192.168.0.1", now);
 
-        HitEntity savedHit = repository.save(hit);
+        repository.save(hit);
 
-        assertThat(savedHit.id()).isNotNull();
+        List<ViewStats> stats = repository.getStats(now.minusMinutes(1), now.plusMinutes(1), List.of("/events/1"), false);
+        assertThat(stats).hasSize(1);
+        assertThat(stats.getFirst().hits()).isEqualTo(1L);
     }
 
     @Test
