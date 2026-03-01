@@ -1,17 +1,13 @@
 package ru.practicum.explorewithme.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import ru.practicum.explorewithme.dto.ViewStats;
 import ru.practicum.explorewithme.model.HitEntity;
 
-import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.StringJoiner;
 
 @Repository
@@ -33,18 +29,8 @@ public class JdbcHitRepository implements HitRepository {
 
     @Override
     public HitEntity save(HitEntity hit) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement statement = connection.prepareStatement(INSERT_HIT_SQL, PreparedStatement.RETURN_GENERATED_KEYS);
-            statement.setString(1, hit.app());
-            statement.setString(2, hit.uri());
-            statement.setString(3, hit.ip());
-            statement.setObject(4, hit.created());
-            return statement;
-        }, keyHolder);
-
-        Long id = Objects.requireNonNull(keyHolder.getKey(), "Cannot save hit without id").longValue();
-        return new HitEntity(id, hit.app(), hit.uri(), hit.ip(), hit.created());
+        jdbcTemplate.update(INSERT_HIT_SQL, hit.app(), hit.uri(), hit.ip(), hit.created());
+        return hit;
     }
 
     @Override
