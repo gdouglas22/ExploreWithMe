@@ -41,10 +41,10 @@ public class HitRepositoryImpl implements HitRepository {
         try {
             jdbc.update(conection -> {
                 PreparedStatement ps = conection.prepareStatement(INSERT_QUERY, PreparedStatement.RETURN_GENERATED_KEYS);
-                ps.setObject(0, hit.getApp());
-                ps.setObject(1, hit.getUri());
-                ps.setObject(1, hit.getIp());
-                ps.setObject(1, hit.getCreated());
+                ps.setObject(1, hit.getApp());
+                ps.setObject(2, hit.getUri());
+                ps.setObject(3, hit.getIp());
+                ps.setObject(4, hit.getCreated());
                 return ps;
             }, keyHolder);
 
