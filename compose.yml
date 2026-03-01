@@ -26,7 +26,7 @@ services:
     depends_on:
       - stat-server-db
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://stat-server-db:5433/statdb
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://stat-server-db:5432/statdb
       - SPRING_DATASOURCE_USERNAME=stat
       - SPRING_DATASOURCE_PASSWORD=stat
     volumes:
@@ -55,7 +55,7 @@ services:
     image: postgres:16.1
     container_name: postgres-stat-server
     ports:
-      - "6542:5433"
+      - "6542:5432"
     environment:
       - POSTGRES_PASSWORD=stat
       - POSTGRES_USER=stat
