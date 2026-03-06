@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("Validation failed"));
+                .body(new ErrorResponse(exception.getMessage()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -29,5 +29,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("Malformed request body"));
+    }
+
+    @ExceptionHandler(ConflictDataException.class)
+    public ResponseEntity<ErrorResponse> handleConflictData(ConflictDataException exception) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException exception) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(exception.getMessage()));
     }
 }
