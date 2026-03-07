@@ -1,4 +1,4 @@
 package ru.practicum.explorewithme.dto.category;
 
-public class NewCategory {
+public record NewCategory(String name) {
 }
