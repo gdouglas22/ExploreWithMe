@@ -9,7 +9,7 @@ import ru.practicum.explorewithme.dto.category.NewCategory;
 import ru.practicum.explorewithme.exception.ConflictDataException;
 import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.mapper.CategoryMapper;
-import ru.practicum.explorewithme.model.user.Category;
+import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.repository.CategoryRepository;
 
 @Service

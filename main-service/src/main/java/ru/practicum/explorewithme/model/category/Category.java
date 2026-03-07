@@ -1,4 +1,4 @@
-package ru.practicum.explorewithme.model.user;
+package ru.practicum.explorewithme.model.category;
 
 import jakarta.persistence.*;
 import lombok.Data;
