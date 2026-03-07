@@ -3,7 +3,7 @@ package ru.practicum.explorewithme.mapper;
 import lombok.experimental.UtilityClass;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
 import ru.practicum.explorewithme.dto.category.NewCategory;
-import ru.practicum.explorewithme.model.user.Category;
+import ru.practicum.explorewithme.model.category.Category;
 
 @UtilityClass
 public class CategoryMapper {
