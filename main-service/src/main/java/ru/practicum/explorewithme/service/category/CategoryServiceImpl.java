@@ -63,4 +63,10 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("Category was updated correctly");
         return categoryDto;
     }
+
+    @Override
+    public Category getEntityById(long id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException(String.format("Категория с id = %d не найдена", id)));
+    }
 }

@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.practicum.explorewithme.dto.user.NewUserRequest;
 import ru.practicum.explorewithme.dto.user.UserDto;
+import ru.practicum.explorewithme.dto.user.UserShortDto;
 import ru.practicum.explorewithme.model.user.User;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -19,6 +20,13 @@ public final class UserMapper {
         return UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
+                .name(user.getName())
+                .build();
+    }
+
+    public static UserShortDto mapToShortDto(User user) {
+        return UserShortDto.builder()
+                .id(user.getId())
                 .name(user.getName())
                 .build();
     }

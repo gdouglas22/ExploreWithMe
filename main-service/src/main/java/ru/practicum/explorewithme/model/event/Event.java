@@ -12,7 +12,7 @@ import ru.practicum.explorewithme.model.user.User;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "categories")
+@Table(name = "events")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,9 +31,6 @@ public class Event {
     @JoinColumn(name = "category_id", nullable = false)
     Category category;
 
-    @Column(name = "confirmedRequests")
-    Integer confirmedRequests;
-
     @Column(name = "created_on", nullable = false)
     LocalDateTime createdOn;
 
@@ -47,7 +44,7 @@ public class Event {
     @JoinColumn(name = "user_id", nullable = false)
     User initiator;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", nullable = false)
     Location location;
 

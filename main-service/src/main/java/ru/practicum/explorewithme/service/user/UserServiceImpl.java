@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.dto.user.NewUserRequest;
 import ru.practicum.explorewithme.dto.user.UserDto;
+import ru.practicum.explorewithme.dto.user.UserShortDto;
 import ru.practicum.explorewithme.exception.ConflictDataException;
 import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.mapper.UserMapper;
@@ -51,6 +52,12 @@ public class UserServiceImpl implements UserService {
                     .map(UserMapper::mapToDto)
                     .toList();
         }
+    }
+
+    @Override
+    public User getEntityById(long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException(String.format("Пользователь с id = %d не найден", id)));
     }
 
     private Optional<User> findAnotherUserByEmail(String email) {
