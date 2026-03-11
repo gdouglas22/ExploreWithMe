@@ -12,6 +12,8 @@ import ru.practicum.explorewithme.mapper.CategoryMapper;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.repository.CategoryRepository;
 
+import java.util.Optional;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -62,5 +64,17 @@ public class CategoryServiceImpl implements CategoryService {
         CategoryDto categoryDto = CategoryMapper.toCategoryDto(category);
         log.info("Category was updated correctly");
         return categoryDto;
+    }
+
+    @Override
+    public CategoryDto getCateGoryById(Long id) {
+        log.info("try to find category by id={}", id);
+        Optional<Category> optionalCategory = categoryRepository.findById(id);
+        if (optionalCategory.isEmpty()) {
+            log.error("not found category by id={}", id);
+            throw new NotFoundException("not found category by id=" + id);
+        }
+        log.info("found category by id={}", id);
+        return CategoryMapper.toCategoryDto(optionalCategory.get());
     }
 }
