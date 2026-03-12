@@ -12,7 +12,7 @@ import ru.practicum.explorewithme.model.user.User;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "categories")
+@Table(name = "events")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,9 +30,6 @@ public class Event {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     Category category;
-
-    @Column(name = "confirmedRequests")
-    Integer confirmedRequests;
 
     @Column(name = "created_on", nullable = false)
     LocalDateTime createdOn;

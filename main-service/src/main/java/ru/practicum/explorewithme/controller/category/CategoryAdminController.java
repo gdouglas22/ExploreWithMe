@@ -18,7 +18,6 @@ public class CategoryAdminController {
     private final CategoryService categoryService;
 
     @PostMapping
-    @ResponseStatus()
     public ResponseEntity<CategoryDto> createCategory(@Valid @RequestBody NewCategory newCategory) {
         CategoryDto categoryDto = categoryService.createCategoryByAdmin(newCategory);
         URI location = URI.create("/categories/" + categoryDto.id());
