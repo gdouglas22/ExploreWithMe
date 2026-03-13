@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
 import ru.practicum.explorewithme.dto.event.NewEventDto;
+import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
 import ru.practicum.explorewithme.service.event.EventService;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public class EventPrivateController {
     public EventFullDto create(
             @PathVariable(value = "userId") Long userId,
             @RequestBody @Valid NewEventDto newEventDto
-            ) {
+    ) {
         return eventService.create(userId, newEventDto);
     }
 
@@ -40,5 +41,14 @@ public class EventPrivateController {
             @RequestParam(value = "size", defaultValue = "10") int size
     ) {
         return eventService.getByUserId(userId, from, size);
+    }
+
+    @PatchMapping("/{eventId}")
+    public EventFullDto update(
+            @PathVariable(value = "userId") Long userId,
+            @PathVariable(value = "eventId") Long eventId,
+            @RequestBody @Valid UpdateEventUserRequest updateEvent
+    ) {
+        return eventService.update(userId, eventId, updateEvent);
     }
 }

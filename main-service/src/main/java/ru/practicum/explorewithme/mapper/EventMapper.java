@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
 import ru.practicum.explorewithme.dto.event.NewEventDto;
+import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 
@@ -48,5 +49,36 @@ public final class EventMapper {
         dto.setPublishedOn(publishedOn);
 
         return dto;
+    }
+
+    public static void updateEventData(Event currentEvent, UpdateEventUserRequest updatedEvent) {
+        if (updatedEvent.hasAnnotation()) {
+            currentEvent.setAnnotation(updatedEvent.getAnnotation());
+        }
+        if (updatedEvent.hasDescription()) {
+            currentEvent.setDescription(updatedEvent.getDescription());
+        }
+        if (updatedEvent.hasEventDate()) {
+            currentEvent.setEventDate(LocalDateTime.parse(updatedEvent.getEventDate(), formatter));
+        }
+        if (updatedEvent.hasLocation()) {
+            currentEvent.setLocation(LocationMapper.mapToLocation(updatedEvent.getLocation()));
+        }
+        if (updatedEvent.hasPaid()) {
+            currentEvent.setPaid(updatedEvent.getPaid());
+        }
+        if (updatedEvent.hasParticipantLimit()) {
+            currentEvent.setParticipantLimit(updatedEvent.getParticipantLimit());
+        }
+        if (updatedEvent.hasStateAction()) {
+            switch (updatedEvent.getStateAction()) {
+                case CANCEL_REVIEW -> currentEvent.setState(State.CANCELED);
+                case SEND_TO_REVIEW -> currentEvent.setState(State.PENDING);
+                default -> currentEvent.setState(State.PENDING);
+            }
+        }
+        if (updatedEvent.hasTitle()) {
+            currentEvent.setTitle(updatedEvent.getTitle());
+        }
     }
 }
