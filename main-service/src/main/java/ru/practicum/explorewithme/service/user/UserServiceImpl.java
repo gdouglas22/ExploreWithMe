@@ -53,6 +53,11 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public boolean userExists(Long userId) {
+        return repository.existsById(userId);
+    }
+
     private Optional<User> findAnotherUserByEmail(String email) {
         User existingUser = repository.findByEmail(email);
         return existingUser != null ? Optional.of(existingUser) : Optional.empty();

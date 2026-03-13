@@ -1,0 +1,64 @@
+package ru.practicum.explorewithme.controller.request;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
+import ru.practicum.explorewithme.model.request.Status;
+import ru.practicum.explorewithme.service.request.RequestService;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(RequestPrivateController.class)
+class RequestPrivateControllerTest {
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    ObjectMapper mapper;
+
+    @MockBean
+    RequestService requestService;
+
+    @Test
+    void getUserRequestsShouldReturnRequestsCorrectly() throws Exception {
+        Long userId = 10L;
+        String created = LocalDateTime.now().format(formatter);
+
+        ParticipationRequestDto result = new ParticipationRequestDto(
+                20L,
+                created,
+                30L,
+                userId,
+                Status.PENDING.name());
+
+        List<ParticipationRequestDto> expectedResult = List.of(result);
+
+        Mockito.when(requestService.getUserRequests(userId)).thenReturn(expectedResult);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/users/10/requests"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[*]").exists())
+                .andExpect(jsonPath("$[1]").doesNotExist())
+                .andExpect(jsonPath("$.[0].id").value(20))
+                .andExpect(jsonPath("$.[0].created").value(created))
+                .andExpect(jsonPath("$.[0].event").value(30))
+                .andExpect(jsonPath("$.[0].requester").value(userId))
+                .andExpect(jsonPath("$.[0].status").value(Status.PENDING.name()));
+
+        Mockito.verify(requestService, Mockito.times(1)).getUserRequests(Mockito.eq(userId));
+    }
+}

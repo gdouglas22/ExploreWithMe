@@ -3,10 +3,16 @@ package ru.practicum.explorewithme.service.request;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 import ru.practicum.explorewithme.exception.BadRequestException;
+import ru.practicum.explorewithme.exception.NotFoundException;
+import ru.practicum.explorewithme.mapper.RequestMapper;
+import ru.practicum.explorewithme.model.request.Request;
 import ru.practicum.explorewithme.repository.RequestRepository;
+import ru.practicum.explorewithme.service.user.UserService;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,6 +22,7 @@ import java.util.Set;
 public class RequestServiceImpl implements RequestService {
 
     private final RequestRepository requestRepository;
+    private final UserService userService;
 
     @Override
     public Map<Long, Long> countRequestsByEventIds(Set<Long> eventIds) {
@@ -27,7 +34,7 @@ public class RequestServiceImpl implements RequestService {
         if (eventIds.isEmpty()) {
             return new HashMap<>();
         }
-        return requestRepository.countRequestsByEventIds(eventIds);
+        return getRequestsByEventIds(eventIds);
     }
 
     @Override
@@ -38,5 +45,25 @@ public class RequestServiceImpl implements RequestService {
             throw new BadRequestException("Try to get requests count by EventIds=null");
         }
         return requestRepository.countRequestsByEventId(eventId);
+    }
+
+    @Override
+    public List<ParticipationRequestDto> getUserRequests(Long userId) {
+        if (!userService.userExists(userId)) {
+            throw new NotFoundException("User was not found with id=" + userId);
+        }
+        List<Request> requests = requestRepository.findRequestsByRequesterId(userId);
+        return requests.stream()
+                .map(RequestMapper::toParticipationRequestDto)
+                .toList();
+    }
+
+    private Map<Long, Long> getRequestsByEventIds(Set<Long> eventIds) {
+        List<Object[]> results = requestRepository.countRequestsByEventIds(eventIds);
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
     }
 }
