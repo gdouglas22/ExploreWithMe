@@ -7,6 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
+import ru.practicum.explorewithme.exception.ConflictDataException;
+import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
@@ -17,12 +19,12 @@ import ru.practicum.explorewithme.model.user.User;
 import ru.practicum.explorewithme.repository.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 @SpringBootTest
@@ -48,15 +50,19 @@ class RequestServiceImplTest {
     @Autowired
     RequestService requestService;
 
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private Event savedEvent;
     private Event savedEvent2;
     private Event savedEvent3;
+    private Event savedEvent4;
     private User savedRequester;
+    private User eventOwner;
 
     @BeforeEach
     void setUp() {
         User user = new User(1L, "user", "email");
-        User savedUser = userRepository.save(user);
+        eventOwner = userRepository.save(user);
 
         Category category = new Category(1L, "category");
         Category savedCategory = categoryRepository.save(category);
@@ -65,19 +71,24 @@ class RequestServiceImplTest {
         Location savedLocation = locationRepository.save(location);
 
         Event event = new Event(1L, "annotation", savedCategory, LocalDateTime.now().minusHours(2),
-                "description", LocalDateTime.now(), savedUser, savedLocation, true, 10,
-                LocalDateTime.now().minusHours(1), true, State.PENDING, "title");
+                "description", LocalDateTime.now(), eventOwner, savedLocation, true, 10,
+                LocalDateTime.now().minusHours(1), true, State.PUBLISHED, "title");
         savedEvent = eventRepository.save(event);
 
         Event event2 = new Event(2L, "annotation", savedCategory, LocalDateTime.now().minusHours(2),
-                "description", LocalDateTime.now(), savedUser, savedLocation, true, 10,
+                "description", LocalDateTime.now(), eventOwner, savedLocation, true, 10,
                 LocalDateTime.now().minusHours(1), true, State.PENDING, "title");
         savedEvent2 = eventRepository.save(event2);
 
         Event event3 = new Event(3L, "annotation", savedCategory, LocalDateTime.now().minusHours(2),
-                "description", LocalDateTime.now(), savedUser, savedLocation, true, 10,
-                LocalDateTime.now().minusHours(1), true, State.PENDING, "title");
+                "description", LocalDateTime.now(), eventOwner, savedLocation, true, 1,
+                LocalDateTime.now().minusHours(1), true, State.PUBLISHED, "title");
         savedEvent3 = eventRepository.save(event3);
+
+        Event event4 = new Event(4L, "annotation", savedCategory, LocalDateTime.now().minusHours(2),
+                "description", LocalDateTime.now(), eventOwner, savedLocation, true, 10,
+                LocalDateTime.now().minusHours(1), false, State.PUBLISHED, "title");
+        savedEvent4 = eventRepository.save(event4);
 
         User requester = new User(2L, "requester", "email");
         savedRequester = userRepository.save(requester);
@@ -85,10 +96,12 @@ class RequestServiceImplTest {
         Request firstRequest = new Request(1L, LocalDateTime.now(), savedEvent, savedRequester, Status.PENDING);
         requestRepository.save(firstRequest);
 
-        Request secondRequest = new Request(2L, LocalDateTime.now().plusMinutes(1), savedEvent2, savedRequester, Status.PENDING);
+        Request secondRequest = new Request(2L, LocalDateTime.now().plusMinutes(1), savedEvent2,
+                savedRequester, Status.PENDING);
         requestRepository.save(secondRequest);
 
-        Request thirdRequest = new Request(3L, LocalDateTime.now().plusMinutes(2), savedEvent3, savedRequester, Status.PENDING);
+        Request thirdRequest = new Request(3L, LocalDateTime.now().plusMinutes(2), savedEvent3,
+                savedRequester, Status.PENDING);
         requestRepository.save(thirdRequest);
     }
 
@@ -118,7 +131,9 @@ class RequestServiceImplTest {
 
     @Test
     void getUserRequestsShouldReturnEmptyListWhenNoRequestFromRequestor() {
-        List<ParticipationRequestDto> expectedList = requestService.getUserRequests(1000L);
+        User user = new User(100L, "test_user", "test@email.user");
+        User savedUser = userRepository.save(user);
+        List<ParticipationRequestDto> expectedList = requestService.getUserRequests(savedUser.getId());
 
         assertTrue(expectedList.isEmpty());
     }
@@ -134,8 +149,100 @@ class RequestServiceImplTest {
     void countRequestsByEventIdShouldReturnZeroWhenNotRequestNyEventId() {
         Long amountRequests = requestService.countRequestsByEventId(1000L);
 
-        System.out.println("amountRequests=" + amountRequests);
-
         assertEquals(0L, amountRequests);
+    }
+
+    @Test
+    void addUserRequestShouldCreateRequestCorrectly() {
+        User newUser = new User(null, "user_for_this_test", "email@for_this_user.ru");
+        User savedUser = userRepository.save(newUser);
+        LocalDateTime startTime = LocalDateTime.now().minusSeconds(1);
+        ParticipationRequestDto result = requestService.addUserRequest(savedUser.getId(), savedEvent.getId());
+        LocalDateTime endTime = LocalDateTime.now().plusSeconds(1);
+
+        LocalDateTime resultDateTime = LocalDateTime.parse(result.created(), formatter);
+
+        assertNotNull(result.id());
+        assertTrue(resultDateTime.isAfter(startTime) && resultDateTime.isBefore(endTime));
+        assertEquals(savedUser.getId(), result.requester());
+        assertEquals(savedEvent.getId(), result.event());
+        assertEquals(Status.PENDING.name(), result.status());
+    }
+
+    @Test
+    void addUserRequestShouldThrowNotFoundExceptionWhenIncorrectUserId() {
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> requestService.addUserRequest(999L, savedEvent.getId()));
+
+        assertEquals("User was not found with id=" + 999L, exception.getMessage());
+
+    }
+
+    @Test
+    void addUserRequestShouldThrowNotFoundExceptionWhenIncorrectEventId() {
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> requestService.addUserRequest(savedRequester.getId(), 999L));
+
+        assertEquals("Event was not found with id=" + 999L, exception.getMessage());
+    }
+
+    @Test
+    void addUserRequestShouldThrowConflictExceptionWhenUserIsEventOwner() {
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> requestService.addUserRequest(eventOwner.getId(), savedEvent.getId()));
+
+        assertEquals("Requester cant make request for its event", exception.getMessage());
+    }
+
+    @Test
+    void addUserRequestShouldThrowConflictExceptionWhenUserMadeMoreThanOneRequest() {
+        User newUser = new User(null, "user_for_this_test", "email@for_this_user.ru");
+        User savedUser = userRepository.save(newUser);
+        requestService.addUserRequest(savedUser.getId(), savedEvent.getId());
+
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> requestService.addUserRequest(savedUser.getId(), savedEvent.getId()));
+
+        assertEquals("Request with requesterId and eventId is already in DB", exception.getMessage());
+    }
+
+    @Test
+    void addUserRequestShouldThrowConflictExceptionWhenUserMadeRequestForNotPublishedEvent() {
+        User newUser = new User(null, "user_for_this_test", "email@for_this_user.ru");
+        User savedUser = userRepository.save(newUser);
+
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> requestService.addUserRequest(savedUser.getId(), savedEvent2.getId()));
+
+        assertEquals("Event=" + savedEvent2.getId() + " is not published", exception.getMessage());
+    }
+
+    @Test
+    void addUserRequestShouldThrowConflictExceptionWhenEventFullParticipation() {
+        User newUser = new User(null, "user_for_this_test", "email@for_this_user.ru");
+        User savedUser = userRepository.save(newUser);
+
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> requestService.addUserRequest(savedUser.getId(), savedEvent3.getId()));
+
+        assertEquals("Event=" + savedEvent3.getId() + " has no available spots for participation",
+                exception.getMessage());
+    }
+
+    @Test
+    void addUserRequestShouldCreateRequestCorrectlyWithStatusConfirmed() {
+        User newUser = new User(null, "user_for_this_test", "email@for_this_user.ru");
+        User savedUser = userRepository.save(newUser);
+        LocalDateTime startTime = LocalDateTime.now().minusSeconds(1);
+        ParticipationRequestDto result = requestService.addUserRequest(savedUser.getId(), savedEvent4.getId());
+        LocalDateTime endTime = LocalDateTime.now().plusSeconds(1);
+
+        LocalDateTime resultDateTime = LocalDateTime.parse(result.created(), formatter);
+
+        assertNotNull(result.id());
+        assertTrue(resultDateTime.isAfter(startTime) && resultDateTime.isBefore(endTime));
+        assertEquals(savedUser.getId(), result.requester());
+        assertEquals(savedEvent4.getId(), result.event());
+        assertEquals(Status.CONFIRMED.name(), result.status());
     }
 }

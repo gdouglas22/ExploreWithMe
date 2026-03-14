@@ -61,4 +61,79 @@ class RequestPrivateControllerTest {
 
         Mockito.verify(requestService, Mockito.times(1)).getUserRequests(Mockito.eq(userId));
     }
+
+    @Test
+    void addUserRequestShouldCreateRequestsCorrectly() throws Exception {
+        Long userId = 20L;
+        Long eventId = 30L;
+        String created = LocalDateTime.now().format(formatter);
+
+        ParticipationRequestDto result = new ParticipationRequestDto(
+                10L,
+                created,
+                30L,
+                userId,
+                Status.PENDING.name());
+
+        Mockito.when(requestService.addUserRequest(userId, eventId)).thenReturn(result);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/users/20/requests")
+                        .param("eventId", "30"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.created").value(created))
+                .andExpect(jsonPath("$.event").value(30))
+                .andExpect(jsonPath("$.requester").value(userId))
+                .andExpect(jsonPath("$.status").value(Status.PENDING.name()));
+
+        Mockito.verify(requestService, Mockito.times(1))
+                .addUserRequest(Mockito.eq(userId), Mockito.eq(eventId));
+    }
+
+    @Test
+    void addUserRequestShouldThrowBadRequestWhenUserIdNotLong() throws Exception {
+        Long userId = 20L;
+        Long eventId = 30L;
+        String created = LocalDateTime.now().format(formatter);
+
+        ParticipationRequestDto result = new ParticipationRequestDto(
+                10L,
+                created,
+                30L,
+                userId,
+                Status.PENDING.name());
+
+        Mockito.when(requestService.addUserRequest(userId, eventId)).thenReturn(result);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/users/trtr/requests")
+                        .param("eventId", "30"))
+                .andExpect(status().isBadRequest());
+
+        Mockito.verify(requestService, Mockito.times(0))
+                .addUserRequest(Mockito.eq(userId), Mockito.eq(eventId));
+    }
+
+    @Test
+    void addUserRequestShouldThrowBadRequestWhenEventIdNotLong() throws Exception {
+        Long userId = 20L;
+        Long eventId = 30L;
+        String created = LocalDateTime.now().format(formatter);
+
+        ParticipationRequestDto result = new ParticipationRequestDto(
+                10L,
+                created,
+                30L,
+                userId,
+                Status.PENDING.name());
+
+        Mockito.when(requestService.addUserRequest(userId, eventId)).thenReturn(result);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/users/trtr/requests")
+                        .param("eventId", "test"))
+                .andExpect(status().isBadRequest());
+
+        Mockito.verify(requestService, Mockito.times(0))
+                .addUserRequest(Mockito.eq(userId), Mockito.eq(eventId));
+    }
 }
