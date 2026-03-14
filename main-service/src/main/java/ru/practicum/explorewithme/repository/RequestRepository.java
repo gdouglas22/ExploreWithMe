@@ -7,13 +7,19 @@ import ru.practicum.explorewithme.model.request.Request;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface RequestRepository extends JpaRepository<Request, Long> {
     @Query("SELECT r.event.id, COUNT(r) " +
             "FROM Request r " +
             "WHERE r.event.id IN (:eventIds) " +
             "GROUP BY r.event.id")
-    Map<Long, Long> countRequestsByEventIds(@Param("eventIds") List<Long> eventIds);
+    Map<Long, Long> countRequestsByEventIds(@Param("eventIds") Set<Long> eventIds);
+
+    @Query("SELECT COUNT(r) " +
+            "FROM Request r " +
+            "WHERE r.event.id = :eventId")
+    Long countRequestsByEventId(@Param("eventId") Long eventId);
 
     List<Request> findByEventId(Long eventId);
 
@@ -24,8 +30,8 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
 
     @Query("SELECT COUNT(r) " +
             "FROM Request r " +
-            "WHERE r.event_id = :eventId and r.status = :status")
-    Integer countEventRequestsInSpecialStatus(
+            "WHERE r.event.id = :eventId and r.status = :status")
+    Long countEventRequestsInSpecialStatus(
             @Param("eventId") Long eventId,
             @Param("status") String status
     );

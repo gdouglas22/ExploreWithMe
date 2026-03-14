@@ -8,18 +8,20 @@ import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 import ru.practicum.explorewithme.exception.BadRequestException;
 import ru.practicum.explorewithme.exception.ConflictDataException;
+import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.mapper.RequestMapper;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.request.Request;
 import ru.practicum.explorewithme.model.request.Status;
 import ru.practicum.explorewithme.model.user.User;
+import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.RequestRepository;
-import ru.practicum.explorewithme.service.event.EventService;
 import ru.practicum.explorewithme.service.user.UserService;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -28,10 +30,10 @@ import java.util.Map;
 public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final UserService userService;
-    private final EventService eventService;
+    private final EventRepository eventRepository;
 
     @Override
-    public Map<Long, Long> countRequestsByEventIds(List<Long> eventIds) {
+    public Map<Long, Long> countRequestsByEventIds(Set<Long> eventIds) {
         log.info("Try to count request by event ids={}", eventIds);
         if (eventIds == null) {
             log.error("Try to get requests count by EventIds=null");
@@ -44,9 +46,20 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
+    public Long countRequestsByEventId(Long eventId) {
+        log.info("Try to count request by event id={}", eventId);
+        if (eventId == null) {
+            log.error("Try to get request count by EventId=null");
+            throw new BadRequestException("Try to get requests count by EventIds=null");
+        }
+        return requestRepository.countRequestsByEventId(eventId);
+    }
+
+    @Override
     public List<ParticipationRequestDto> getUserEventRequests(Long userId, Long eventId) {
         User initiator = userService.getEntityById(userId);
-        Event event = eventService.getEntityById(eventId);
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException(String.format("Событие с id = %d не найдено", eventId)));
 
         if (!initiator.getId().equals(event.getInitiator().getId())) {
             throw new ConflictDataException(
@@ -63,7 +76,8 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public List<ParticipationRequestDto> reviewUserEventRequests(Long userId, Long eventId, EventRequestStatusUpdateRequest request) {
         User initiator = userService.getEntityById(userId);
-        Event event = eventService.getEntityById(eventId);
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException(String.format("Событие с id = %d не найдено", eventId)));
 
         if (!initiator.getId().equals(event.getInitiator().getId())) {
             throw new ConflictDataException(
@@ -71,7 +85,7 @@ public class RequestServiceImpl implements RequestService {
             );
         }
 
-        Integer confirmedEventRequests = requestRepository.countEventRequestsInSpecialStatus(event.getId(), Status.CONFIRMED.name());
+        Long confirmedEventRequests = requestRepository.countEventRequestsInSpecialStatus(event.getId(), Status.CONFIRMED.name());
         // превышел лимит заявок на событие
         if (confirmedEventRequests > event.getParticipantLimit()) {
             throw new ConflictDataException(String.format("Достигнут лимит заявок на событие с id = %d", event.getId()));

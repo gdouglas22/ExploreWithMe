@@ -5,9 +5,12 @@ import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface RequestService {
-    Map<Long, Long> countRequestsByEventIds(List<Long> eventIds);
+    Map<Long, Long> countRequestsByEventIds(Set<Long> eventIds);
+
+    Long countRequestsByEventId(Long eventId);
 
     List<ParticipationRequestDto> getUserEventRequests(Long userId, Long eventId);
 
