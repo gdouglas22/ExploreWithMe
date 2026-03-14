@@ -58,6 +58,7 @@ class RequestServiceImplTest {
     private Event savedEvent4;
     private User savedRequester;
     private User eventOwner;
+    private Request savedRequest;
 
     @BeforeEach
     void setUp() {
@@ -94,7 +95,7 @@ class RequestServiceImplTest {
         savedRequester = userRepository.save(requester);
 
         Request firstRequest = new Request(1L, LocalDateTime.now(), savedEvent, savedRequester, Status.PENDING);
-        requestRepository.save(firstRequest);
+        savedRequest = requestRepository.save(firstRequest);
 
         Request secondRequest = new Request(2L, LocalDateTime.now().plusMinutes(1), savedEvent2,
                 savedRequester, Status.PENDING);
@@ -244,5 +245,47 @@ class RequestServiceImplTest {
         assertEquals(savedUser.getId(), result.requester());
         assertEquals(savedEvent4.getId(), result.event());
         assertEquals(Status.CONFIRMED.name(), result.status());
+    }
+
+    @Test
+    void rejectUserRequestShouldUpdateRequestCorrectly() {
+        ParticipationRequestDto result = requestService.rejectUserRequest(savedRequester.getId(), savedRequest.getId());
+
+        assertEquals(savedRequest.getId(), result.id());
+        assertEquals(savedRequest.getCreated().format(formatter), result.created());
+        assertEquals(savedRequest.getEvent().getId(), result.event());
+        assertEquals(savedRequest.getRequester().getId(), result.requester());
+        assertEquals(savedRequest.getRequester().getId(), result.requester());
+        assertEquals(Status.REJECTED.name(), result.status());
+    }
+
+    @Test
+    void rejectUserRequestShouldThrowNotFoundExceptionWhenUserIdNoInDB() {
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> requestService.rejectUserRequest(1000L, savedRequest.getId()));
+
+        assertEquals("User was not found with id=" + 1000L,
+                exception.getMessage());
+    }
+
+    @Test
+    void rejectUserRequestShouldThrowNotFoundExceptionWhenRequestIdNoInDB() {
+        NotFoundException exception = assertThrows(NotFoundException.class,
+                () -> requestService.rejectUserRequest(savedRequester.getId(), 1000L));
+
+        assertEquals("Request was not found with id=" + 1000L,
+                exception.getMessage());
+    }
+
+    @Test
+    void rejectUserRequestShouldThrowConflictDataExceptionWhenRequestRejectNotRequestor() {
+        User newUser = new User(null, "user_for_this_test", "email@for_this_user.ru");
+        User savedUser = userRepository.save(newUser);
+
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> requestService.rejectUserRequest(savedUser.getId(), savedRequest.getId()));
+
+        assertEquals("Canceled request can only requestor",
+                exception.getMessage());
     }
 }

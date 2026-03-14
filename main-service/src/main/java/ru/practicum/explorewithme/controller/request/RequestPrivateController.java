@@ -29,4 +29,11 @@ public class RequestPrivateController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(requestDto);
     }
 
+    @PatchMapping("/{requestId}/cancel")
+    public ResponseEntity<ParticipationRequestDto> updateUserRequest(@PathVariable Long userId,
+                                                                     @PathVariable Long requestId) {
+        ParticipationRequestDto requestDto = requestService.rejectUserRequest(userId, requestId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(requestDto);
+    }
+
 }

@@ -55,8 +55,10 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<ParticipationRequestDto> getUserRequests(Long userId) {
+        log.info("Try to get User Requests by userId={}", userId);
         checkUserExistInDB(userId);
         List<Request> requests = requestRepository.findRequestsByRequesterId(userId);
+        log.info("Requests found successfully by userId={}", userId);
         return requests.stream()
                 .map(RequestMapper::toParticipationRequestDto)
                 .toList();
@@ -89,6 +91,30 @@ public class RequestServiceImpl implements RequestService {
         log.info("Save request={}", requestDto);
 
         return requestDto;
+    }
+
+    @Override
+    public ParticipationRequestDto rejectUserRequest(Long userId, Long requestId) {
+        log.info("Try to reject requestId={} by userId={}", userId, requestId);
+        checkUserExistInDB(userId);
+        checkRequestExistInDB(requestId);
+        Optional<Request> requestOptional = requestRepository.findById(requestId);
+        Request request = requestOptional.get();
+        if (!request.getRequester().getId().equals(userId)) {
+            log.error("Canceled request can only requestor={}", request.getRequester().getId());
+            throw new ConflictDataException("Canceled request can only requestor");
+        }
+        request.setStatus(Status.REJECTED);
+        Request savedRequest = requestRepository.save(request);
+        log.info("Successfully rejected requestId={} by userId={}", userId, requestId);
+        return RequestMapper.toParticipationRequestDto(savedRequest);
+    }
+
+    private void checkRequestExistInDB(Long requestId) {
+        if (!requestRepository.existsById(requestId)) {
+            log.error("Request was not found with id={}", requestId);
+            throw new NotFoundException("Request was not found with id=" + requestId);
+        }
     }
 
     private void checkEventIsAbleToRequest(Event event) {
