@@ -1,6 +1,5 @@
 package ru.practicum.explorewithme.service.request;
 
-import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 
 import java.util.List;
@@ -12,7 +11,9 @@ public interface RequestService {
 
     Long countRequestsByEventId(Long eventId);
 
-    List<ParticipationRequestDto> getUserEventRequests(Long userId, Long eventId);
+    List<ParticipationRequestDto> getUserRequests(Long userId);
 
-    List<ParticipationRequestDto> reviewUserEventRequests(Long userId, Long eventId, EventRequestStatusUpdateRequest request);
+    ParticipationRequestDto addUserRequest(Long userId, Long eventId);
+
+    ParticipationRequestDto rejectUserRequest(Long userId, Long requestId);
 }

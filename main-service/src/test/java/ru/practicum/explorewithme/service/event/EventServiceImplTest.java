@@ -2,361 +2,348 @@ package ru.practicum.explorewithme.service.event;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.client.StatClient;
 import ru.practicum.explorewithme.dto.ViewStats;
+import ru.practicum.explorewithme.dto.event.EventAdminRequest;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
-import ru.practicum.explorewithme.dto.event.NewEventDto;
-import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
-import ru.practicum.explorewithme.dto.location.LocationDto;
+import ru.practicum.explorewithme.dto.event.UpdateEventAdminRequest;
 import ru.practicum.explorewithme.exception.ConflictDataException;
-import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.location.Location;
 import ru.practicum.explorewithme.model.user.User;
+import ru.practicum.explorewithme.repository.CategoryRepository;
 import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.LocationRepository;
-import ru.practicum.explorewithme.service.category.CategoryService;
-import ru.practicum.explorewithme.service.request.RequestService;
-import ru.practicum.explorewithme.service.user.UserService;
+import ru.practicum.explorewithme.repository.UserRepository;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
 class EventServiceImplTest {
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    @Mock
+    @Autowired
+    private EventService eventService;
+
+    @Autowired
     private EventRepository eventRepository;
 
-    @Mock
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private LocationRepository locationRepository;
 
-    @Mock
-    private UserService userService;
-
-    @Mock
-    private CategoryService categoryService;
-
-    @Mock
-    private RequestService requestService;
-
-    @Mock
+    @MockBean
     private StatClient statClient;
 
-    private Clock fixedClock;
-    private EventServiceImpl eventService;
+    private Event firstEvent;
+    private Event secondEvent;
+    private Category savedCategory2;
 
     @BeforeEach
-    void setUp() {
-        fixedClock = Clock.fixed(
-                Instant.parse("2024-01-01T10:00:00Z"),
-                ZoneId.systemDefault()
-        );
-        eventService = new EventServiceImpl(
-                eventRepository,
-                locationRepository,
-                userService,
-                categoryService,
-                requestService,
-                statClient,
-                fixedClock
-        );
-    }
-
-    @Test
-    void create_shouldCreateEventWithExistingLocation() {
-        Long userId = 1L;
-        User user = User.builder().id(userId).build();
-        Category category = Category.builder().id(2L).build();
-        LocationDto locationDto = new LocationDto(10.0, 20.0);
-        Location location = Location.builder().id(3L).lat(20.0).lon(10.0).build();
-
-        NewEventDto dto = NewEventDto.builder()
-                .annotation("A".repeat(20))
-                .category(category.getId())
-                .description("D".repeat(20))
-                .eventDate("2024-01-02 12:00:00")
-                .location(locationDto)
-                .title("Title".repeat(3))
+    void createDataInDB() {
+        Category category = Category.builder()
+                .id(1L)
+                .name("category")
                 .build();
+        Category savedCategory = categoryRepository.save(category);
 
-        Event savedEvent = Event.builder()
-                .id(5L)
-                .annotation(dto.getAnnotation())
-                .category(category)
-                .createdOn(LocalDateTime.now(fixedClock))
-                .description(dto.getDescription())
-                .eventDate(LocalDateTime.of(2024, 1, 2, 12, 0))
-                .initiator(user)
-                .location(location)
-                .paid(dto.getPaid())
-                .participantLimit(dto.getParticipantLimit())
-                .requestModeration(dto.getRequestModeration())
+        Category category2 = Category.builder()
+                .id(2L)
+                .name("second_category")
+                .build();
+        savedCategory2 = categoryRepository.save(category2);
+
+        User user = User.builder()
+                .id(1L)
+                .name("user")
+                .email("user@test.ru")
+                .build();
+        User savedUser = userRepository.save(user);
+
+        Location location = Location.builder()
+                .id(1L)
+                .lat(1.1f)
+                .lon(2.2f)
+                .build();
+        Location savedLocation = locationRepository.save(location);
+
+        firstEvent = Event.builder()
+                .id(1L)
+                .annotation("first_annotation")
+                .category(savedCategory)
+                .createdOn(LocalDateTime.now().minusHours(1))
+                .description("first_description")
+                .eventDate(LocalDateTime.now().plusHours(1))
+                .initiator(savedUser)
+                .location(savedLocation)
+                .paid(true)
+                .participantLimit(10)
+                .publishedOn(LocalDateTime.now())
+                .requestModeration(true)
                 .state(State.PENDING)
-                .title(dto.getTitle())
+                .title("test_title")
                 .build();
 
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(categoryService.getEntityById(dto.getCategory())).thenReturn(category);
-        when(locationRepository.findByLonAndLat(locationDto.getLon(), locationDto.getLat()))
-                .thenReturn(Optional.of(location));
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        EventFullDto result = eventService.create(userId, dto);
-
-        assertNotNull(result);
-        assertEquals(savedEvent.getId(), result.getId());
-        verify(eventRepository).save(any(Event.class));
-        verify(locationRepository).findByLonAndLat(locationDto.getLon(), locationDto.getLat());
-    }
-
-    @Test
-    void create_shouldCreateEventWithNewLocationWhenNotFound() {
-        Long userId = 1L;
-        User user = User.builder().id(userId).build();
-        Category category = Category.builder().id(2L).build();
-        LocationDto locationDto = new LocationDto(10.0, 20.0);
-        Location newLocation = Location.builder().id(3L).lat(20.0).lon(10.0).build();
-
-        NewEventDto dto = NewEventDto.builder()
-                .annotation("A".repeat(20))
-                .category(category.getId())
-                .description("D".repeat(20))
-                .eventDate("2024-01-02 12:00:00")
-                .location(locationDto)
-                .title("Title".repeat(3))
-                .build();
-
-        Event savedEvent = Event.builder()
-                .id(5L)
-                .annotation(dto.getAnnotation())
-                .category(category)
-                .createdOn(LocalDateTime.now(fixedClock))
-                .description(dto.getDescription())
-                .eventDate(LocalDateTime.of(2024, 1, 2, 12, 0))
-                .initiator(user)
-                .location(newLocation)
-                .paid(dto.getPaid())
-                .participantLimit(dto.getParticipantLimit())
-                .requestModeration(dto.getRequestModeration())
-                .state(State.PENDING)
-                .title(dto.getTitle())
-                .build();
-
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(categoryService.getEntityById(dto.getCategory())).thenReturn(category);
-        when(locationRepository.findByLonAndLat(locationDto.getLon(), locationDto.getLat()))
-                .thenReturn(Optional.empty());
-        when(locationRepository.save(any(Location.class))).thenReturn(newLocation);
-        when(eventRepository.save(any(Event.class))).thenReturn(savedEvent);
-
-        EventFullDto result = eventService.create(userId, dto);
-
-        assertNotNull(result);
-        assertEquals(savedEvent.getId(), result.getId());
-        verify(locationRepository).save(any(Location.class));
-    }
-
-    @Test
-    void getByUserIdAndId_shouldReturnEventWithViewsAndConfirmedRequests_whenExists() {
-        Long userId = 1L;
-        Long eventId = 2L;
-        User user = User.builder().id(userId).build();
-        LocalDateTime createdOn = LocalDateTime.now(fixedClock);
-        Event event = Event.builder()
-                .id(eventId)
-                .initiator(user)
-                .category(Category.builder().id(3L).build())
-                .location(Location.builder().id(4L).lat(10.0).lon(20.0).build())
-                .state(State.PENDING)
-                .createdOn(createdOn)
-                .eventDate(LocalDateTime.now(fixedClock).plusDays(1))
-                .build();
-
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-        when(requestService.countRequestsByEventId(eventId)).thenReturn(5L);
-        when(statClient.getStat(any(LocalDateTime.class), any(LocalDateTime.class), any(List.class), eq(false)))
-                .thenReturn(List.of(new ViewStats("ewm", "/events/2", 10L)));
-
-        EventFullDto result = eventService.getByUserIdAndId(userId, eventId);
-
-        assertNotNull(result);
-        assertEquals(eventId, result.getId());
-        assertEquals(5, result.getConfirmedRequests());
-        assertEquals(10, result.getViews());
-        verify(userService).getEntityById(userId);
-        verify(eventRepository).findById(eventId);
-        verify(requestService).countRequestsByEventId(eventId);
-        verify(statClient).getStat(any(LocalDateTime.class), any(LocalDateTime.class), any(List.class), eq(false));
-    }
-
-    @Test
-    void getByUserIdAndId_shouldThrowNotFound_whenEventMissing() {
-        Long userId = 1L;
-        Long eventId = 2L;
-
-        when(userService.getEntityById(userId)).thenReturn(User.builder().id(userId).build());
-        when(eventRepository.findById(eventId)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class, () -> eventService.getByUserIdAndId(userId, eventId));
-    }
-
-    @Test
-    void getByUserId_shouldReturnEventsWithViewsAndConfirmedRequests() {
-        Long userId = 1L;
-        User user = User.builder().id(userId).build();
-        Long eventId = 2L;
-        Event event = Event.builder()
-                .id(eventId)
-                .initiator(user)
-                .category(Category.builder().id(3L).build())
-                .location(Location.builder().id(4L).lat(10.0).lon(20.0).build())
-                .state(State.PENDING)
-                .createdOn(LocalDateTime.now(fixedClock))
-                .eventDate(LocalDateTime.now(fixedClock).plusDays(1))
-                .build();
-
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(eventRepository.findAllByInitiatorId(eq(userId), any(PageRequest.class)))
-                .thenReturn(List.of(event));
-        when(requestService.countRequestsByEventIds(Set.of(eventId)))
-                .thenReturn(Map.of(eventId, 3L));
-        when(statClient.getStat(any(LocalDateTime.class), any(LocalDateTime.class), any(List.class), eq(false)))
-                .thenReturn(List.of(new ViewStats("ewm", "/events/2", 7L)));
-
-        List<EventFullDto> result = eventService.getByUserId(userId, 0, 10);
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(event.getId(), result.getFirst().getId());
-        assertEquals(3, result.getFirst().getConfirmedRequests());
-        assertEquals(7, result.getFirst().getViews());
-        verify(requestService).countRequestsByEventIds(Set.of(eventId));
-        verify(statClient).getStat(any(LocalDateTime.class), any(LocalDateTime.class), any(List.class), eq(false));
-    }
-
-    @Test
-    void update_shouldUpdateEvent_whenStateAllowedAndInitiatorMatches() {
-        Long userId = 1L;
-        Long eventId = 2L;
-        User user = User.builder().id(userId).build();
-        Category category = Category.builder().id(3L).build();
-        Event event = Event.builder()
-                .id(eventId)
-                .initiator(user)
-                .category(category)
-                .location(Location.builder().id(4L).lat(10.0).lon(20.0).build())
-                .state(State.PENDING)
-                .createdOn(LocalDateTime.now(fixedClock))
-                .eventDate(LocalDateTime.now(fixedClock).plusDays(1))
-                .title("Old title")
-                .build();
-
-        UpdateEventUserRequest updateRequest = UpdateEventUserRequest.builder()
-                .title("New title")
-                .build();
-
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        EventFullDto result = eventService.update(userId, eventId, updateRequest);
-
-        assertNotNull(result);
-        assertEquals("New title", result.getTitle());
-        verify(eventRepository).save(any(Event.class));
-    }
-
-    @Test
-    void update_shouldThrowConflict_whenStateNotAllowed() {
-        Long userId = 1L;
-        Long eventId = 2L;
-        User user = User.builder().id(userId).build();
-        Event event = Event.builder()
-                .id(eventId)
-                .initiator(user)
-                .category(Category.builder().id(3L).build())
-                .location(Location.builder().id(4L).lat(10.0).lon(20.0).build())
+        secondEvent = Event.builder()
+                .id(2L)
+                .annotation("second_annotation")
+                .category(savedCategory2)
+                .createdOn(LocalDateTime.now().minusDays(1).minusHours(1))
+                .description("first_description")
+                .eventDate(LocalDateTime.now().minusDays(1).plusHours(1))
+                .initiator(savedUser)
+                .location(savedLocation)
+                .paid(true)
+                .participantLimit(10)
+                .publishedOn(LocalDateTime.now().minusDays(1))
+                .requestModeration(true)
                 .state(State.PUBLISHED)
-                .createdOn(LocalDateTime.now(fixedClock))
-                .eventDate(LocalDateTime.now(fixedClock).plusDays(1))
+                .title("second_event_test_title")
                 .build();
-
-        UpdateEventUserRequest updateRequest = UpdateEventUserRequest.builder()
-                .title("New title")
-                .build();
-
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-
-        assertThrows(ConflictDataException.class, () -> eventService.update(userId, eventId, updateRequest));
     }
 
     @Test
-    void update_shouldThrowConflict_whenUserNotInitiator() {
-        Long userId = 1L;
-        Long eventId = 2L;
-        User user = User.builder().id(userId).build();
-        User anotherUser = User.builder().id(999L).build();
-        Event event = Event.builder()
-                .id(eventId)
-                .initiator(anotherUser)
-                .category(Category.builder().id(3L).build())
-                .location(Location.builder().id(4L).lat(10.0).lon(20.0).build())
-                .state(State.PENDING)
-                .createdOn(LocalDateTime.now(fixedClock))
-                .eventDate(LocalDateTime.now(fixedClock).plusDays(1))
-                .build();
+    void getEventByParamShouldReturnEventsCorrectly() {
+        Event savedEvent = eventRepository.save(firstEvent);
 
-        UpdateEventUserRequest updateRequest = UpdateEventUserRequest.builder()
-                .title("New title")
-                .build();
+        List<Long> users = List.of(1L, 2L, 3L);
+        List<String> states = List.of("PENDING");
+        List<Long> categories = List.of(1L, 2L, 3L);
+        String rangeStart = LocalDateTime.now().minusDays(1).format(formatter);
+        String rangeEnd = LocalDateTime.now().plusDays(1).format(formatter);
+        EventAdminRequest request = new EventAdminRequest(
+                users, states, categories, rangeStart, rangeEnd
+        );
 
-        when(userService.getEntityById(userId)).thenReturn(user);
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+        Pageable pageable = PageRequest.of(0 / 10, 10);
 
-        assertThrows(ConflictDataException.class, () -> eventService.update(userId, eventId, updateRequest));
+        List<String> uris = List.of("/events/" + savedEvent.getId());
+        ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
+
+        when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
+                Mockito.anyList(), Mockito.eq(false)))
+                .thenReturn(List.of(viewStats));
+
+        Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
+        EventFullDto receivedEvent = receivedPage.getContent().getFirst();
+
+        assertNotNull(receivedPage);
+        assertEquals(1, receivedPage.getTotalPages());
+        assertEquals(1, receivedPage.getTotalElements());
+        assertEquals(0, receivedPage.getNumber()); // текущая страница (0-indexed)
+        assertEquals(10, receivedPage.getSize()); // размер страницы
+        assertEquals(1, receivedPage.getNumberOfElements());
+        assertEquals(savedEvent.getId(), receivedEvent.getId());
+        assertEquals(savedEvent.getId(), receivedEvent.getId());
+        assertEquals(savedEvent.getTitle(), receivedEvent.getTitle());
+        assertEquals(savedEvent.getAnnotation(), receivedEvent.getAnnotation());
+        assertEquals(savedEvent.getDescription(), receivedEvent.getDescription());
+        assertEquals(100L, receivedEvent.getViews());
     }
 
     @Test
-    void getEntityById_shouldReturnEvent_whenExists() {
-        Long eventId = 2L;
-        Event event = Event.builder().id(eventId).build();
+    void getEventByParamShouldReturnEmptyPageWithAnotherPage() {
+        Event savedEvent = eventRepository.save(firstEvent);
 
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+        List<Long> users = List.of(1L, 2L, 3L);
+        List<String> states = List.of("PENDING");
+        List<Long> categories = List.of(1L, 2L, 3L);
+        String rangeStart = LocalDateTime.now().minusDays(1).format(formatter);
+        String rangeEnd = LocalDateTime.now().plusDays(1).format(formatter);
+        EventAdminRequest request = new EventAdminRequest(
+                users, states, categories, rangeStart, rangeEnd
+        );
 
-        Event result = eventService.getEntityById(eventId);
+        Pageable pageable = PageRequest.of(1, 10);
 
-        assertNotNull(result);
-        assertEquals(eventId, result.getId());
+        List<String> uris = List.of("/events/" + savedEvent.getId());
+        ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
+
+        when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
+                Mockito.anyList(), Mockito.eq(false)))
+                .thenReturn(List.of(viewStats));
+
+        Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
+
+
+        assertNotNull(receivedPage);
+        assertTrue(receivedPage.getContent().isEmpty());
+        assertEquals(0, receivedPage.getTotalPages());
+        assertEquals(0, receivedPage.getTotalElements());
+        assertEquals(1, receivedPage.getNumber());
+        assertEquals(10, receivedPage.getSize());
     }
 
     @Test
-    void getEntityById_shouldThrowNotFound_whenMissing() {
-        Long eventId = 2L;
-        when(eventRepository.findById(eventId)).thenReturn(Optional.empty());
+    void getEventByParamShouldReturnEmptyPageWithAnotherRangeStart() {
+        Event savedEvent = eventRepository.save(firstEvent);
 
-        assertThrows(NotFoundException.class, () -> eventService.getEntityById(eventId));
+        List<Long> users = List.of(1L, 2L, 3L);
+        List<String> states = List.of("PENDING");
+        List<Long> categories = List.of(1L, 2L, 3L);
+        String rangeStart = LocalDateTime.now().plusDays(1).format(formatter);
+        String rangeEnd = LocalDateTime.now().plusDays(2).format(formatter);
+        EventAdminRequest request = new EventAdminRequest(
+                users, states, categories, rangeStart, rangeEnd
+        );
+
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        List<String> uris = List.of("/events/" + savedEvent.getId());
+        ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
+
+        when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
+                Mockito.anyList(), Mockito.eq(false)))
+                .thenReturn(List.of(viewStats));
+
+        Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
+
+        assertNotNull(receivedPage);
+        assertTrue(receivedPage.getContent().isEmpty());
+        assertEquals(0, receivedPage.getTotalPages());
+        assertEquals(0, receivedPage.getTotalElements());
+        assertEquals(0, receivedPage.getNumber());
+        assertEquals(10, receivedPage.getSize());
+    }
+
+    @Test
+    void getEventByParamShouldReturnEmptyPageWithAnotherStates() {
+        Event savedEvent = eventRepository.save(firstEvent);
+
+        List<Long> users = List.of(1L, 2L, 3L);
+        List<String> states = List.of("CANCELED");
+        List<Long> categories = List.of(1L, 2L, 3L);
+        String rangeStart = LocalDateTime.now().minusDays(1).format(formatter);
+        String rangeEnd = LocalDateTime.now().plusDays(2).format(formatter);
+        EventAdminRequest request = new EventAdminRequest(
+                users, states, categories, rangeStart, rangeEnd
+        );
+
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        List<String> uris = List.of("/events/" + savedEvent.getId());
+        ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
+
+        when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
+                Mockito.anyList(), Mockito.eq(false)))
+                .thenReturn(List.of(viewStats));
+
+        Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
+
+        assertNotNull(receivedPage);
+        assertTrue(receivedPage.getContent().isEmpty());
+        assertEquals(0, receivedPage.getTotalPages());
+        assertEquals(0, receivedPage.getTotalElements());
+        assertEquals(0, receivedPage.getNumber());
+        assertEquals(10, receivedPage.getSize());
+    }
+
+    @Test
+    void updateEventAdminShouldUpdateFullEventCorrectly() {
+        Event savedEvent = eventRepository.save(firstEvent);
+        UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
+                .annotation("test_annotation".repeat(15))
+                .category(savedCategory2.getId())
+                .description("test_description".repeat(20))
+                .eventDate(LocalDateTime.now().plusHours(3).format(formatter))
+                .location(new Location(30L, 1.1f, 2.2f))
+                .paid(true)
+                .participantLimit(40)
+                .requestModeration(true)
+                .stateAction("PUBLISH_EVENT")
+                .title("test_title")
+                .build();
+
+        EventFullDto receivedEvent = eventService.updateEventAdmin(savedEvent.getId(), request);
+
+        assertEquals("test_annotation".repeat(15), receivedEvent.getAnnotation());
+        assertEquals(savedCategory2.getId(), receivedEvent.getCategory().id());
+        assertEquals("test_description".repeat(20), receivedEvent.getDescription());
+        assertEquals(request.getEventDate(), receivedEvent.getEventDate());
+    }
+
+    @Test
+    void updateEventAdminShouldUpdatePartlyEventCorrectly() {
+        Event savedEvent = eventRepository.save(firstEvent);
+        UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
+                .annotation("test_annotation".repeat(15))
+                .category(savedCategory2.getId())
+                .description("test_description".repeat(20))
+                .eventDate(LocalDateTime.now().plusHours(3).format(formatter))
+                .build();
+
+        EventFullDto receivedEvent = eventService.updateEventAdmin(savedEvent.getId(), request);
+
+        assertEquals("test_annotation".repeat(15), receivedEvent.getAnnotation());
+        assertEquals(savedCategory2.getId(), receivedEvent.getCategory().id());
+        assertEquals("test_description".repeat(20), receivedEvent.getDescription());
+        assertEquals(request.getEventDate(), receivedEvent.getEventDate());
+        assertEquals(savedEvent.getTitle(), receivedEvent.getTitle());
+        assertEquals(savedEvent.getInitiator().getName(), receivedEvent.getInitiator().getName());
+    }
+
+    @Test
+    void updateEventAdminShouldThrowConflictExceptionWhenUpdatePublishState() {
+        Event savedEvent = eventRepository.save(secondEvent);
+        UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
+                .annotation("test_annotation".repeat(15))
+                .category(savedCategory2.getId())
+                .description("test_description".repeat(20))
+                .eventDate(LocalDateTime.now().plusHours(3).format(formatter))
+                .location(new Location(30L, 1.1f, 2.2f))
+                .paid(true)
+                .participantLimit(40)
+                .requestModeration(true)
+                .stateAction("PUBLISH_EVENT")
+                .title("test_title")
+                .build();
+
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> eventService.updateEventAdmin(savedEvent.getId(), request));
+        assertEquals("Cannot publish the event because it's not in the right state", exception.getMessage());
+    }
+
+    @Test
+    void updateEventAdminShouldThrowConflictExceptionWhenUpdateIncorrectEventDate() {
+        Event savedEvent = eventRepository.save(firstEvent);
+        UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
+                .annotation("test_annotation".repeat(15))
+                .category(savedCategory2.getId())
+                .description("test_description".repeat(20))
+                .eventDate(LocalDateTime.now().plusMinutes(3).format(formatter))
+                .location(new Location(30L, 1.1f, 2.2f))
+                .paid(true)
+                .participantLimit(40)
+                .requestModeration(true)
+                .stateAction("PUBLISH_EVENT")
+                .title("test_title")
+                .build();
+
+        ConflictDataException exception = assertThrows(ConflictDataException.class,
+                () -> eventService.updateEventAdmin(savedEvent.getId(), request));
+        assertTrue(exception.getMessage().contains("event date can't be earlier than="));
     }
 }

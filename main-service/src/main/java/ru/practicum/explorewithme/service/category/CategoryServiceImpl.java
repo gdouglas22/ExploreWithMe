@@ -3,6 +3,7 @@ package ru.practicum.explorewithme.service.category;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
 import ru.practicum.explorewithme.dto.category.NewCategory;
@@ -11,6 +12,8 @@ import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.mapper.CategoryMapper;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.repository.CategoryRepository;
+
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -65,8 +68,14 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public Category getEntityById(long id) {
-        return categoryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException(String.format("Категория с id = %d не найдена", id)));
+    public CategoryDto getCateGoryById(Long id) {
+        log.info("try to find category by id={}", id);
+        Optional<Category> optionalCategory = categoryRepository.findById(id);
+        if (optionalCategory.isEmpty()) {
+            log.error("not found category by id={}", id);
+            throw new NotFoundException("not found category by id=" + id);
+        }
+        log.info("found category by id={}", id);
+        return CategoryMapper.toCategoryDto(optionalCategory.get());
     }
 }

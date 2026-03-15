@@ -1,22 +1,15 @@
 package ru.practicum.explorewithme.service.event;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import ru.practicum.explorewithme.dto.event.EventAdminRequest;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
-import ru.practicum.explorewithme.dto.event.NewEventDto;
-import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
-import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
-import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
-import ru.practicum.explorewithme.model.event.Event;
-
-import java.util.List;
+import ru.practicum.explorewithme.dto.event.UpdateEventAdminRequest;
 
 public interface EventService {
-    EventFullDto create(Long userid, NewEventDto newEventDto);
+    Page<EventFullDto> getEventByParam(EventAdminRequest eventAdminRequest, Pageable pageable);
 
-    EventFullDto getByUserIdAndId(Long userId, Long id);
+    EventFullDto updateEventAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest);
 
-    List<EventFullDto> getByUserId(Long userId, int from, int size);
-
-    EventFullDto update(Long userId, Long eventId, UpdateEventUserRequest updateEventData);
-
-    Event getEntityById(Long id);
+    boolean eventExists(Long eventId);
 }

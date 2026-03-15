@@ -13,5 +13,5 @@ public interface UserService {
 
     List<UserDto> getUsers(List<Long> ids, int from, int size);
 
-    User getEntityById(long id);
+    boolean userExists(Long userId);
 }

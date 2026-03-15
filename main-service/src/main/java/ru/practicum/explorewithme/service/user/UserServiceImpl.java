@@ -55,9 +55,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User getEntityById(long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException(String.format("Пользователь с id = %d не найден", id)));
+    public boolean userExists(Long userId) {
+        return repository.existsById(userId);
     }
 
     private Optional<User> findAnotherUserByEmail(String email) {

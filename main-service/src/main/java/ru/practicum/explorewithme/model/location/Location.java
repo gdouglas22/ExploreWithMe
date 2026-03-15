@@ -1,13 +1,14 @@
 package ru.practicum.explorewithme.model.location;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "locations",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"lon", "lat"}))
-@Getter
-@Setter
+@Table(name = "locations")
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

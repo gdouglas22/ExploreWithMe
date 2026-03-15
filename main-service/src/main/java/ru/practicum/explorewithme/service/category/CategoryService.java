@@ -4,6 +4,8 @@ import ru.practicum.explorewithme.dto.category.CategoryDto;
 import ru.practicum.explorewithme.dto.category.NewCategory;
 import ru.practicum.explorewithme.model.category.Category;
 
+import java.util.List;
+
 public interface CategoryService {
     CategoryDto createCategoryByAdmin(NewCategory newCategory);
 
@@ -11,5 +13,5 @@ public interface CategoryService {
 
     CategoryDto updateCategoryByAdmin(Long catId, NewCategory newCategory);
 
-    Category getEntityById(long id);
+    CategoryDto getCateGoryById(Long id);
 }

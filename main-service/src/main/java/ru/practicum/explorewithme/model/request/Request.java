@@ -11,7 +11,9 @@ import ru.practicum.explorewithme.model.user.User;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "requests")
+@Table(name = "requests", indexes = {
+        @Index(name = "idx_request_event_user", columnList = "event_id, user_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -2,33 +2,31 @@ package ru.practicum.explorewithme.service.event;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.client.StatClient;
 import ru.practicum.explorewithme.dto.ViewStats;
+import ru.practicum.explorewithme.dto.category.CategoryDto;
+import ru.practicum.explorewithme.dto.event.EventAdminRequest;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
-import ru.practicum.explorewithme.dto.event.NewEventDto;
-import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
-import ru.practicum.explorewithme.dto.location.LocationDto;
+import ru.practicum.explorewithme.dto.event.UpdateEventAdminRequest;
+import ru.practicum.explorewithme.exception.BadRequestException;
 import ru.practicum.explorewithme.exception.ConflictDataException;
 import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.mapper.EventMapper;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
-import ru.practicum.explorewithme.model.location.Location;
-import ru.practicum.explorewithme.model.user.User;
+import ru.practicum.explorewithme.model.event.StateAction;
 import ru.practicum.explorewithme.repository.EventRepository;
-import ru.practicum.explorewithme.repository.LocationRepository;
 import ru.practicum.explorewithme.service.category.CategoryService;
 import ru.practicum.explorewithme.service.request.RequestService;
-import ru.practicum.explorewithme.service.user.UserService;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,109 +35,103 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
-    private final LocationRepository locationRepository;
-    private final UserService userService;
-    private final CategoryService categoryService;
     private final RequestService requestService;
-
+    private final CategoryService categoryService;
     private final StatClient statClient;
-    private final Clock clock;
-
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final String uri = "/events/";
 
     @Override
-    @Transactional
-    public EventFullDto create(Long userId, NewEventDto newEventDto) {
-        User initiator = userService.getEntityById(userId);
-        Category category = categoryService.getEntityById(newEventDto.getCategory());
-        Event event = EventMapper.mapToNewEvent(newEventDto);
-        event.setCategory(category);
-        event.setInitiator(initiator);
-        event.setCreatedOn(LocalDateTime.now(clock));
-        Location location = findOrCreateLocation(newEventDto.getLocation());
-        event.setLocation(location);
-        event = eventRepository.save(event);
+    public Page<EventFullDto> getEventByParam(EventAdminRequest eventAdminRequest, Pageable pageable) {
+        log.info("Try to get event by param={}", eventAdminRequest);
 
-        return EventMapper.mapToFullDto(event);
+        List<State> states = parseState(eventAdminRequest.states());
+        LocalDateTime rangeStart = parseDate(eventAdminRequest.rangeStart());
+        LocalDateTime rangeEnd = parseDate(eventAdminRequest.rangeEnd());
+
+        Page<Event> page = eventRepository.findByEventAdminRequest(
+                eventAdminRequest.users(),
+                states,
+                eventAdminRequest.categories(),
+                rangeStart,
+                rangeEnd,
+                pageable);
+
+        LocalDateTime earliestDate = getEarliestDateInPage(page);
+
+        Set<Long> eventIds = getEventId(page);
+
+        Map<Long, Long> amountRequestsByEventIds = requestService.countRequestsByEventIds(eventIds);
+        Map<Long, Long> viewByEventIds = getNotUniqueStatsByEventIds(eventIds, earliestDate);
+
+        log.info("Return event");
+
+        return page.map(event -> {
+            Long amountRequest = amountRequestsByEventIds.get(event.getId());
+            Long amountRequestResult = amountRequest == null ? 0 : amountRequest;
+
+            Long stat = viewByEventIds.get(event.getId());
+            Long resultStat = stat == null ? 0 : stat;
+
+            return EventMapper.toEventFullDto(event, amountRequestResult, resultStat);
+        });
     }
 
-    public EventFullDto getByUserIdAndId(Long userId, Long id) {
-        // проверка на суествование пользователя по его id
-        userService.getEntityById(userId);
+    @Override
+    public EventFullDto updateEventAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest) {
+        Optional<Event> optionalEvent = eventRepository.findById(eventId);
+        if (optionalEvent.isEmpty()) {
+            log.error("Event not found by ID={}", eventId);
+            throw new NotFoundException("Event not found by ID=" + eventId);
+        }
+        Event event = optionalEvent.get();
+        Event updatedEvent = validateAndUpdate(event, updateEventAdminRequest);
+        Event savedEvent = eventRepository.save(updatedEvent);
 
-        Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException(String.format("Событие с id = %d не найдено", id)));
+        Long amountRequestsByEventId = requestService.countRequestsByEventId(savedEvent.getId());
+        Long viewByEventId = getNotUniqueStatsByEventId(savedEvent.getId(), savedEvent.getCreatedOn());
 
-        Long eventStats = getNotUniqueStatsByEventId(event.getId(), event.getCreatedOn());
-        Long confirmedRequests = requestService.countRequestsByEventId(event.getId());
-
-        EventFullDto response = EventMapper.mapToFullDto(event);
-        response.setConfirmedRequests(confirmedRequests.intValue());
-        response.setViews(eventStats.intValue());
-
-        return response;
+        return EventMapper.toEventFullDto(event, amountRequestsByEventId, viewByEventId);
     }
 
-    public List<EventFullDto> getByUserId(Long userId, int from, int size) {
-        User user = userService.getEntityById(userId);
-        PageRequest page = PageRequest.of(from > 0 ? from / size : 0, size);
+    @Override
+    public boolean eventExists(Long eventId) {
+        return eventRepository.existsById(eventId);
+    }
 
-        List<Event> events = eventRepository.findAllByInitiatorId(user.getId(), page);
+    private Set<Long> getEventId(Page<Event> page) {
+        return page.getContent()
+                .stream()
+                .map(Event::getId)
+                .collect(Collectors.toSet());
+    }
 
-        LocalDateTime earliestDatetime = events.stream()
+    private LocalDateTime getEarliestDateInPage(Page<Event> page) {
+        return page.getContent()
+                .stream()
                 .map(Event::getCreatedOn)
                 .min(LocalDateTime::compareTo)
                 .orElse(null);
-
-        Set<Long> eventsIds = events.stream().map(Event::getId).collect(Collectors.toSet());
-        Map<Long, Long> eventsStats = getNotUniqueStatsByEventIds(eventsIds, earliestDatetime);
-        Map<Long, Long> confirmedEventsRequests = requestService.countRequestsByEventIds(eventsIds);
-
-        Map<Long, Event> eventsMap = events.stream()
-                .collect(Collectors.toMap(Event::getId, Function.identity()));
-
-        return events.stream()
-                .map(EventMapper::mapToFullDto)
-                .peek(eventFullDto -> {
-                    eventFullDto.setConfirmedRequests(confirmedEventsRequests.get(eventFullDto.getId()).intValue());
-                    eventFullDto.setViews(eventsStats.get(eventFullDto.getId()).intValue());
-                })
-                .toList();
     }
 
-    public EventFullDto update(Long userId, Long eventId, UpdateEventUserRequest updateEventData) {
-        User user = userService.getEntityById(userId);
-        Event currentEvent = getEntityById(eventId);
-        if (!(currentEvent.getState().equals(State.CANCELED) || currentEvent.getState().equals(State.PENDING))) {
-            throw new ConflictDataException("Можно редактировать только отмененные или в состоянии модерации события.");
+    private LocalDateTime parseDate(String stringDate) {
+        try {
+            return LocalDateTime.parse(stringDate, formatter);
+        } catch (DateTimeParseException exception) {
+            log.error("Not valid value stringDate={}", stringDate);
+            throw new BadRequestException("Not valid value stringDate" + stringDate);
         }
-        if (!currentEvent.getInitiator().getId().equals(user.getId())) {
-            throw new ConflictDataException(
-                    String.format("Пользователь с id = %d не является автором события с id = %d", user.getId(), currentEvent.getId())
-            );
-        }
-        if (updateEventData.hasCategory()) {
-            Category updatedCategory = categoryService.getEntityById(updateEventData.getCategory());
-            currentEvent.setCategory(updatedCategory);
-        }
-        EventMapper.updateEventData(currentEvent, updateEventData);
-        currentEvent = eventRepository.save(currentEvent);
-        return EventMapper.mapToFullDto(currentEvent);
     }
 
-    public Event getEntityById(Long id) {
-        return eventRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException(String.format("Событие с id = %d не найдено", id)));
-    }
-
-    private Location findOrCreateLocation(LocationDto locationDto) {
-        return locationRepository.findByLonAndLat(locationDto.getLon(), locationDto.getLat())
-                .orElseGet(() -> {
-                    Location newLocation = new Location();
-                    newLocation.setLon(locationDto.getLon());
-                    newLocation.setLat(locationDto.getLat());
-                    return locationRepository.save(newLocation);
-                });
+    private List<State> parseState(List<String> states) {
+        try {
+            return states.stream()
+                    .map(State::valueOf)
+                    .toList();
+        } catch (IllegalArgumentException e) {
+            log.error("Not valid value states={}", states);
+            throw new BadRequestException("Not valid value states=" + states);
+        }
     }
 
     private Map<Long, Long> getNotUniqueStatsByEventIds(Set<Long> eventIds, LocalDateTime from) {
@@ -167,5 +159,66 @@ public class EventServiceImpl implements EventService {
                 .mapToLong(Long::longValue)
                 .sum();
 
+    }
+
+    private Event validateAndUpdate(Event event, UpdateEventAdminRequest updateEventAdminRequest) {
+
+        if (updateEventAdminRequest.hasStateAction()) {
+            StateAction action = StateAction.valueOf(updateEventAdminRequest.getStateAction());
+            if (!event.getState().equals(State.PENDING)) {
+                log.info("Cannot publish the event because it's not in the right state={}", event.getState());
+                throw new ConflictDataException("Cannot publish the event because it's not in the right state");
+            }
+            if (action.equals(StateAction.PUBLISH_EVENT)) {
+                event.setState(State.PUBLISHED);
+            } else {
+                event.setState(State.CANCELED);
+            }
+        }
+
+        if (updateEventAdminRequest.hasEventDate()) {
+            LocalDateTime eventDate = parseDate(updateEventAdminRequest.getEventDate());
+            if (eventDate.isBefore(event.getPublishedOn().plusHours(1))) {
+                log.error("event date can't be earlier than={}", event.getPublishedOn().plusHours(1));
+                throw new ConflictDataException("event date can't be earlier than="
+                        + event.getPublishedOn().plusHours(1));
+            }
+            event.setEventDate(eventDate);
+        }
+
+        if (updateEventAdminRequest.hasAnnotation()) {
+            event.setAnnotation(updateEventAdminRequest.getAnnotation());
+        }
+
+        if (updateEventAdminRequest.hasCategory()) {
+            CategoryDto categoryDto = categoryService.getCateGoryById(updateEventAdminRequest.getCategory());
+            event.setCategory(new Category(categoryDto.id(), categoryDto.name()));
+        }
+
+        if (updateEventAdminRequest.hasDescription()) {
+            event.setDescription(updateEventAdminRequest.getDescription());
+        }
+
+        if (updateEventAdminRequest.hasLocation()) {
+            event.setLocation(updateEventAdminRequest.getLocation());
+        }
+
+        if (updateEventAdminRequest.hasPaid()) {
+            event.setPaid(updateEventAdminRequest.getPaid());
+        }
+
+        if (updateEventAdminRequest.hasParticipantLimit()) {
+            event.setParticipantLimit(updateEventAdminRequest.getParticipantLimit());
+        }
+
+        if (updateEventAdminRequest.hasRequestModeration()) {
+            event.setRequestModeration(updateEventAdminRequest.getRequestModeration());
+        }
+
+        if (updateEventAdminRequest.hasTitle()) {
+            event.setTitle(updateEventAdminRequest.getTitle());
+        }
+
+        return event;
     }
 }

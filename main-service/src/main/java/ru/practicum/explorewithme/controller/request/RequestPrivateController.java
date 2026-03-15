@@ -1,34 +1,39 @@
 package ru.practicum.explorewithme.controller.request;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 import ru.practicum.explorewithme.service.request.RequestService;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/users/{userId}/events/{eventId}/requests")
+@Controller
+@RequestMapping("/users/{userId}/requests")
 @RequiredArgsConstructor
 public class RequestPrivateController {
     private final RequestService requestService;
 
     @GetMapping
-    public List<ParticipationRequestDto> getUserEventRequests(
-            @PathVariable(value = "userId") Long userId,
-            @PathVariable(value = "eventId") Long eventId
-    ) {
-        return requestService.getUserEventRequests(userId, eventId);
+    public ResponseEntity<List<ParticipationRequestDto>> getUserRequests(@PathVariable Long userId) {
+        List<ParticipationRequestDto> requestDto = requestService.getUserRequests(userId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(requestDto);
     }
 
-    @PatchMapping
-    public List<ParticipationRequestDto> reviewUserEventRequests(
-            @PathVariable(value = "userId") Long userId,
-            @PathVariable(value = "eventId") Long eventId,
-            @RequestBody @Valid EventRequestStatusUpdateRequest request
-    ) {
-        return requestService.reviewUserEventRequests(userId, eventId, request);
+    @PostMapping
+    public ResponseEntity<ParticipationRequestDto> addUserRequest(@PathVariable Long userId,
+                                                                  @RequestParam Long eventId) {
+        ParticipationRequestDto requestDto = requestService.addUserRequest(userId, eventId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(requestDto);
     }
+
+    @PatchMapping("/{requestId}/cancel")
+    public ResponseEntity<ParticipationRequestDto> updateUserRequest(@PathVariable Long userId,
+                                                                     @PathVariable Long requestId) {
+        ParticipationRequestDto requestDto = requestService.rejectUserRequest(userId, requestId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(requestDto);
+    }
+
 }
