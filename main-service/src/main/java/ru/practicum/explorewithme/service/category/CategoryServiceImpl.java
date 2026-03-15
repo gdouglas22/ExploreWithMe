@@ -13,7 +13,7 @@ import ru.practicum.explorewithme.mapper.CategoryMapper;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.repository.CategoryRepository;
 
-import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -68,23 +68,14 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryDto> getCategories(int from, int size) {
-        log.info("Получение списка категорий from={} size={}", from, size);
-
-        PageRequest page = PageRequest.of(from > 0 ? from / size : 0, size);
-
-        return categoryRepository.findAll(page).stream()
-                .map(CategoryMapper::toCategoryDto)
-                .toList();
-    }
-
-    @Override
-    public CategoryDto getCategoryById(Long catId) {
-        log.info("Получение категории по id={}", catId);
-
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
-
-        return CategoryMapper.toCategoryDto(category);
+    public CategoryDto getCateGoryById(Long id) {
+        log.info("try to find category by id={}", id);
+        Optional<Category> optionalCategory = categoryRepository.findById(id);
+        if (optionalCategory.isEmpty()) {
+            log.error("not found category by id={}", id);
+            throw new NotFoundException("not found category by id=" + id);
+        }
+        log.info("found category by id={}", id);
+        return CategoryMapper.toCategoryDto(optionalCategory.get());
     }
 }
