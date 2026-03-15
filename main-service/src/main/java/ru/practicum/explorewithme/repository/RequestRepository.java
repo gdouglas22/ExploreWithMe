@@ -22,6 +22,18 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
             "WHERE r.event.id = :eventId")
     Long countRequestsByEventId(@Param("eventId") Long eventId);
 
+    @Query(value = "SELECT r.event_id AS eventId, COUNT(r.id) AS requestCount " +
+            "FROM requests r " +
+            "WHERE r.event_id IN (:eventIds) AND r.status = 'CONFIRMED' " +
+            "GROUP BY r.event_id",
+            nativeQuery = true)
+    List<Object[]> countConfirmedRequestsByEventIds(@Param("eventIds") Set<Long> eventIds);
+
+    @Query("SELECT COUNT(r) " +
+            "FROM Request r " +
+            "WHERE r.event.id = :eventId AND r.status = ru.practicum.explorewithme.model.request.Status.CONFIRMED")
+    Long countConfirmedRequestsByEventId(@Param("eventId") Long eventId);
+
     List<Request> findRequestsByRequesterId(Long id);
 
     Optional<Request> findByRequesterIdAndEventId(Long requesterId, Long eventId);

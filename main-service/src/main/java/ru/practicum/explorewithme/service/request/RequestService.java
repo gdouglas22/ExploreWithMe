@@ -11,6 +11,10 @@ public interface RequestService {
 
     Long countRequestsByEventId(Long eventId);
 
+    Map<Long, Long> countConfirmedRequestsByEventIds(Set<Long> eventIds);
+
+    Long countConfirmedRequestsByEventId(Long eventId);
+
     List<ParticipationRequestDto> getUserRequests(Long userId);
 
     ParticipationRequestDto addUserRequest(Long userId, Long eventId);
