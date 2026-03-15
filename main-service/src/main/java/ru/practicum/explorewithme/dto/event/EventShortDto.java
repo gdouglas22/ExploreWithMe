@@ -1,8 +1,12 @@
 package ru.practicum.explorewithme.dto.event;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
-import ru.practicum.explorewithme.dto.location.LocationDto;
 import ru.practicum.explorewithme.dto.user.UserShortDto;
 
 @Builder
@@ -11,21 +15,14 @@ import ru.practicum.explorewithme.dto.user.UserShortDto;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-public class EventFullDto {
+public class EventShortDto {
     Long id;
     String annotation;
     CategoryDto category;
     Long confirmedRequests;
-    String createdOn;
-    String description;
     String eventDate;
     UserShortDto initiator;
-    LocationDto location;
     Boolean paid;
-    Integer participantLimit;
-    String publishedOn;
-    Boolean requestModeration;
-    String state;
     String title;
     Long views;
 }

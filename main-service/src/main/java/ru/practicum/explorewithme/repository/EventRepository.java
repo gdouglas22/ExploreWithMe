@@ -10,8 +10,7 @@ import ru.practicum.explorewithme.model.event.State;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
-import java.util.List;
+import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
@@ -29,4 +28,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("rangeEnd") LocalDateTime rangeEnd,
             Pageable pageable
     );
+
+    Optional<Event> findByIdAndInitiatorId(Long eventId, Long userId);
+
+    Page<Event> findAllByInitiatorId(Long userId, Pageable pageable);
 }

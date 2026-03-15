@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
+import ru.practicum.explorewithme.dto.event.EventShortDto;
 import ru.practicum.explorewithme.dto.event.NewEventDto;
 import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
 import ru.practicum.explorewithme.service.event.EventService;
@@ -35,7 +36,7 @@ public class EventPrivateController {
     }
 
     @GetMapping
-    public List<EventFullDto> getByUserId(
+    public List<EventShortDto> getByUserId(
             @PathVariable(value = "userId") Long userId,
             @RequestParam(value = "from", defaultValue = "0") int from,
             @RequestParam(value = "size", defaultValue = "10") int size

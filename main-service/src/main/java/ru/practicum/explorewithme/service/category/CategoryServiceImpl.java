@@ -13,6 +13,7 @@ import ru.practicum.explorewithme.mapper.CategoryMapper;
 import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.repository.CategoryRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -65,6 +66,21 @@ public class CategoryServiceImpl implements CategoryService {
         CategoryDto categoryDto = CategoryMapper.toCategoryDto(category);
         log.info("Category was updated correctly");
         return categoryDto;
+    }
+
+    @Override
+    public List<CategoryDto> getCategories(int from, int size) {
+        log.info("Try to get categories from={} size={}", from, size);
+        PageRequest pageRequest = PageRequest.of(from > 0 ? from / size : 0, size);
+        return categoryRepository.findAll(pageRequest)
+                .stream()
+                .map(CategoryMapper::toCategoryDto)
+                .toList();
+    }
+
+    @Override
+    public CategoryDto getCategoryById(Long catId) {
+        return getCateGoryById(catId);
     }
 
     @Override
