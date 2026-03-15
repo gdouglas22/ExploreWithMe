@@ -3,6 +3,9 @@ package ru.practicum.explorewithme.service.compilation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.client.StatClient;
@@ -89,6 +92,33 @@ public class CompilationServiceImpl implements CompilationService {
         } catch (DataIntegrityViolationException exception) {
             throw new ConflictDataException("Compilation already exists");
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CompilationDto> getCompilations(Boolean pinned, int from, int size) {
+
+        int page = from > 0 ? from / size : 0;
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Compilation> compilations;
+
+        if (pinned != null) {
+            compilations = compilationRepository.findAllByPinned(pinned, pageable);
+        } else {
+            compilations = compilationRepository.findAll(pageable);
+        }
+
+        return compilations.stream()
+                .map(this::toCompilationDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CompilationDto getCompilation(Long compId) {
+        Compilation compilation = getCompilationOrThrow(compId);
+        return toCompilationDto(compilation);
     }
 
     private Compilation getCompilationOrThrow(Long compId) {
