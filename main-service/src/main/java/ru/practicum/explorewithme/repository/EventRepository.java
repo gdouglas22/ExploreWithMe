@@ -11,6 +11,8 @@ import ru.practicum.explorewithme.model.event.State;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import java.util.List;
+
 public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e FROM Event e " +

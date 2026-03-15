@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(of = {"lat", "lon"})
 public class Location {
 
     @Id
@@ -19,9 +20,9 @@ public class Location {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "lat")
-    private Float lat;
+    @Column(name = "lat", nullable = false)
+    private Double lat;
 
-    @Column(name = "lon")
-    private Float lon;
+    @Column(name = "lon", nullable = false)
+    private Double lon;
 }

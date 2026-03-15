@@ -44,7 +44,7 @@ public class Event {
     @JoinColumn(name = "user_id", nullable = false)
     User initiator;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", nullable = false)
     Location location;
 

@@ -2,8 +2,8 @@ package ru.practicum.explorewithme.dto.event;
 
 import lombok.*;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
+import ru.practicum.explorewithme.dto.location.LocationDto;
 import ru.practicum.explorewithme.dto.user.UserShortDto;
-import ru.practicum.explorewithme.model.location.Location;
 
 @Builder
 @Getter
