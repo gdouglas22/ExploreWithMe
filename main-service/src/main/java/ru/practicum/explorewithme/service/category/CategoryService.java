@@ -13,5 +13,9 @@ public interface CategoryService {
 
     CategoryDto updateCategoryByAdmin(Long catId, NewCategory newCategory);
 
+    List<CategoryDto> getCategories(int from, int size);
+
+    CategoryDto getCategoryById(Long catId);
+
     CategoryDto getCateGoryById(Long id);
 }
