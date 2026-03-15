@@ -54,6 +54,29 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
+    public Map<Long, Long> countConfirmedRequestsByEventIds(Set<Long> eventIds) {
+        log.info("Try to count confirmed request by event ids={}", eventIds);
+        if (eventIds == null) {
+            log.error("Try to get confirmed requests count by EventIds=null");
+            throw new BadRequestException("Try to get confirmed requests count by EventIds=null");
+        }
+        if (eventIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        return getConfirmedRequestsByEventIds(eventIds);
+    }
+
+    @Override
+    public Long countConfirmedRequestsByEventId(Long eventId) {
+        log.info("Try to count confirmed request by event id={}", eventId);
+        if (eventId == null) {
+            log.error("Try to get confirmed request count by EventId=null");
+            throw new BadRequestException("Try to get confirmed requests count by EventIds=null");
+        }
+        return requestRepository.countConfirmedRequestsByEventId(eventId);
+    }
+
+    @Override
     public List<ParticipationRequestDto> getUserRequests(Long userId) {
         log.info("Try to get User Requests by userId={}", userId);
         checkUserExistInDB(userId);
@@ -164,6 +187,15 @@ public class RequestServiceImpl implements RequestService {
         Map<Long, Long> map = new HashMap<>();
         for (Object[] row : results) {
             map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    private Map<Long, Long> getConfirmedRequestsByEventIds(Set<Long> eventIds) {
+        List<Object[]> results = requestRepository.countConfirmedRequestsByEventIds(eventIds);
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : results) {
+            map.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
         }
         return map;
     }

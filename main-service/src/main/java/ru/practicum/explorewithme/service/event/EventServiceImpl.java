@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.client.StatClient;
+import ru.practicum.explorewithme.dto.EndpointHit;
 import ru.practicum.explorewithme.dto.ViewStats;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
 import ru.practicum.explorewithme.dto.event.EventAdminRequest;
@@ -49,6 +50,7 @@ public class EventServiceImpl implements EventService {
     private final StatClient statClient;
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final String uri = "/events/";
+    private final String appName = "ewm-main-service";
 
     @Override
     public Page<EventFullDto> getEventByParam(EventAdminRequest eventAdminRequest, Pageable pageable) {
@@ -141,6 +143,62 @@ public class EventServiceImpl implements EventService {
                         amountRequestsByEventIds.getOrDefault(event.getId(), 0L),
                         viewByEventIds.getOrDefault(event.getId(), 0L)))
                 .toList();
+    }
+
+    @Override
+    public List<EventShortDto> searchPublicEvents(String text, List<Long> categories, Boolean paid,
+                                                  String rangeStart, String rangeEnd, Boolean onlyAvailable,
+                                                  String sort, int from, int size, String requestUri, String ip) {
+        LocalDateTime start = parsePublicRangeStart(rangeStart, rangeEnd);
+        LocalDateTime end = parseNullableDate(rangeEnd);
+
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new BadRequestException("Range start must be before range end");
+        }
+
+        List<Event> events = eventRepository.findPublicEvents(
+                text,
+                normalizeIds(categories),
+                paid,
+                start,
+                end,
+                Boolean.TRUE.equals(onlyAvailable)
+        );
+
+        if (events.isEmpty()) {
+            saveHit(requestUri, ip);
+            return List.of();
+        }
+
+        Set<Long> eventIds = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toSet());
+        Map<Long, Long> confirmedRequestsByEventIds = requestService.countConfirmedRequestsByEventIds(eventIds);
+        Map<Long, Long> viewsByEventIds = getNotUniqueStatsByEventIds(eventIds, getEarliestDate(events));
+        Comparator<Event> comparator = getPublicSortComparator(sort, viewsByEventIds);
+
+        List<EventShortDto> result = events.stream()
+                .sorted(comparator)
+                .skip(from)
+                .limit(size)
+                .map(event -> EventMapper.toEventShortDto(
+                        event,
+                        confirmedRequestsByEventIds.getOrDefault(event.getId(), 0L),
+                        viewsByEventIds.getOrDefault(event.getId(), 0L)))
+                .toList();
+
+        saveHit(requestUri, ip);
+        return result;
+    }
+
+    @Override
+    public EventFullDto getPublishedEventById(Long eventId, String requestUri, String ip) {
+        Event event = eventRepository.findByIdAndState(eventId, State.PUBLISHED)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+        Long confirmedRequests = requestService.countConfirmedRequestsByEventId(eventId);
+        Long views = getNotUniqueStatsByEventId(eventId, event.getCreatedOn());
+        saveHit(requestUri, ip);
+        return EventMapper.toEventFullDto(event, confirmedRequests, views);
     }
 
     @Override
@@ -241,6 +299,9 @@ public class EventServiceImpl implements EventService {
     }
 
     private List<State> parseState(List<String> states) {
+        if (states == null || states.isEmpty()) {
+            return null;
+        }
         try {
             return states.stream()
                     .map(State::valueOf)
@@ -354,5 +415,45 @@ public class EventServiceImpl implements EventService {
         getUserById(userId);
         return eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Event not found by ID=" + eventId));
+    }
+
+    private LocalDateTime parseNullableDate(String stringDate) {
+        if (stringDate == null || stringDate.isBlank()) {
+            return null;
+        }
+        return parseDate(stringDate);
+    }
+
+    private LocalDateTime parsePublicRangeStart(String rangeStart, String rangeEnd) {
+        if ((rangeStart == null || rangeStart.isBlank()) && (rangeEnd == null || rangeEnd.isBlank())) {
+            return LocalDateTime.now();
+        }
+        return parseNullableDate(rangeStart);
+    }
+
+    private List<Long> normalizeIds(List<Long> ids) {
+        return ids == null || ids.isEmpty() ? null : ids;
+    }
+
+    private LocalDateTime getEarliestDate(List<Event> events) {
+        return events.stream()
+                .map(Event::getCreatedOn)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
+    }
+
+    private Comparator<Event> getPublicSortComparator(String sort, Map<Long, Long> viewsByEventIds) {
+        if (sort == null || sort.isBlank() || sort.equals("EVENT_DATE")) {
+            return Comparator.comparing(Event::getEventDate);
+        }
+        if (sort.equals("VIEWS")) {
+            return Comparator.comparingLong((Event event) -> viewsByEventIds.getOrDefault(event.getId(), 0L))
+                    .reversed();
+        }
+        throw new BadRequestException("Unknown sort option=" + sort);
+    }
+
+    private void saveHit(String requestUri, String ip) {
+        statClient.saveHit(new EndpointHit(null, appName, requestUri, ip, LocalDateTime.now()));
     }
 }
