@@ -10,4 +10,6 @@ public interface EventService {
     Page<EventFullDto> getEventByParam(EventAdminRequest eventAdminRequest, Pageable pageable);
 
     EventFullDto updateEventAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest);
+
+    boolean eventExists(Long eventId);
 }

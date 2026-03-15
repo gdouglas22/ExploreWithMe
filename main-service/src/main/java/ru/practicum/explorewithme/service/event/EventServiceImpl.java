@@ -93,6 +93,10 @@ public class EventServiceImpl implements EventService {
         return EventMapper.toEventFullDto(event, amountRequestsByEventId, viewByEventId);
     }
 
+    @Override
+    public boolean eventExists(Long eventId) {
+        return eventRepository.existsById(eventId);
+    }
 
     private Set<Long> getEventId(Page<Event> page) {
         return page.getContent()
