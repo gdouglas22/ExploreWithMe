@@ -6,15 +6,15 @@ import ru.practicum.explorewithme.model.location.Location;
 public final class LocationMapper {
     public static Location mapToLocation(LocationDto dto) {
         return Location.builder()
-                .lon(dto.getLon())
-                .lat(dto.getLat())
+                .lon(dto.getLon().floatValue())
+                .lat(dto.getLat().floatValue())
                 .build();
     }
 
     public static LocationDto mapToDto(Location location) {
         return LocationDto.builder()
-                .lon(location.getLon())
-                .lat(location.getLat())
+                .lon(Double.valueOf(location.getLon()))
+                .lat(Double.valueOf(location.getLat()))
                 .build();
     }
 }

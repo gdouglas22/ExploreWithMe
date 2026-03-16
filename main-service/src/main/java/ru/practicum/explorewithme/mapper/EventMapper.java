@@ -21,7 +21,7 @@ public class EventMapper {
                 .description(event.getDescription())
                 .eventDate(event.getEventDate().format(customFormatter))
                 .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                .location(LocationMapper.mapToDto(event.getLocation()))
+                .location(event.getLocation())
                 .paid(event.getPaid())
                 .participantLimit(event.getParticipantLimit())
                 .publishedOn(event.getPublishedOn() == null ? null : event.getPublishedOn().format(customFormatter))

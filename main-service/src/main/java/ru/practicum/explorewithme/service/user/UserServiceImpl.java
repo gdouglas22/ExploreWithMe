@@ -58,6 +58,11 @@ public class UserServiceImpl implements UserService {
         return repository.existsById(userId);
     }
 
+    public User getEntityById(long userId) {
+        return repository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(String.format("Пользователь с id = %d не найден", userId)));
+    }
+
     private Optional<User> findAnotherUserByEmail(String email) {
         User existingUser = repository.findByEmail(email);
         return existingUser != null ? Optional.of(existingUser) : Optional.empty();

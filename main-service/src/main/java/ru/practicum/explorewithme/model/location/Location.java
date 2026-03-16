@@ -22,8 +22,8 @@ public class Location {
     private Long id;
 
     @Column(name = "lat", nullable = false)
-    private Double lat;
+    private Float lat;
 
     @Column(name = "lon", nullable = false)
-    private Double lon;
+    private Float lon;
 }
