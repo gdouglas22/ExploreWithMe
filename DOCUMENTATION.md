@@ -497,6 +497,18 @@ mvn spring-boot:run
 ```
 Сервер стартует на `http://localhost:9090`.
 
+### Локальный запуск main-service (без Docker)
+
+1. Поднять PostgreSQL на порту `6541`, создать БД `mainservicedb` (пользователь/пароль: `mainservice`)
+2. Убедиться, что `stat-server` доступен на `http://localhost:9090`
+3. Запустить `main-service` с профилем `local`:
+```bash
+cd main-service
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+Профиль `local` переопределяет datasource на `jdbc:postgresql://localhost:6541/mainservicedb` и не влияет на тестовый профиль.
+
 ### Сборка проекта
 
 ```bash
@@ -520,7 +532,7 @@ mvn clean verify -Pcheck
 ### Тестовый профиль
 
 В тестах используется профиль `test` (`@ActiveProfiles("test")`).
-`stat-server` использует **H2 in-memory** базу данных вместо PostgreSQL.
+`stat-server` и `main-service` используют **H2 in-memory** базу данных вместо PostgreSQL.
 
 Тестовые настройки — [stat/stat-server/src/test/resources/application-test.properties](stat/stat-server/src/test/resources/application-test.properties).
 Тестовая схема — [stat/stat-server/src/test/resources/schema.sql](stat/stat-server/src/test/resources/schema.sql).

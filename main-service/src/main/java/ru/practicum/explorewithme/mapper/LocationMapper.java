@@ -17,4 +17,15 @@ public final class LocationMapper {
                 .lat(Double.valueOf(location.getLat()))
                 .build();
     }
+
+    public static Location copy(Location location) {
+        if (location == null) {
+            return null;
+        }
+        return Location.builder()
+                .id(location.getId())
+                .lat(location.getLat())
+                .lon(location.getLon())
+                .build();
+    }
 }

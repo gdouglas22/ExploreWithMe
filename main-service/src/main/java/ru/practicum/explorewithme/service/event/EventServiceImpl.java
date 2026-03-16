@@ -26,6 +26,7 @@ import ru.practicum.explorewithme.model.category.Category;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.event.StateAction;
+import ru.practicum.explorewithme.model.location.Location;
 import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.UserRepository;
 import ru.practicum.explorewithme.service.category.CategoryService;
@@ -384,7 +385,10 @@ public class EventServiceImpl implements EventService {
         }
 
         if (updateEventAdminRequest.hasLocation()) {
-            event.setLocation(updateEventAdminRequest.getLocation());
+            event.setLocation(Location.builder()
+                    .lat(updateEventAdminRequest.getLocation().getLat())
+                    .lon(updateEventAdminRequest.getLocation().getLon())
+                    .build());
         }
 
         if (updateEventAdminRequest.hasPaid()) {
