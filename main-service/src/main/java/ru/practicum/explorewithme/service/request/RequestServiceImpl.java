@@ -40,7 +40,9 @@ public class RequestServiceImpl implements RequestService {
         if (eventIds.isEmpty()) {
             return new HashMap<>();
         }
-        return getRequestsByEventIds(eventIds);
+        Map<Long, Long> map = getRequestsByEventIds(eventIds);
+        log.info("Return request by event ids={}", eventIds);
+        return map;
     }
 
     @Override
@@ -183,11 +185,16 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private Map<Long, Long> getRequestsByEventIds(Set<Long> eventIds) {
+        log.info("Try to getRequestsByEventIds={}", eventIds);
         List<Object[]> results = requestRepository.countRequestsByEventIds(eventIds);
+        if (results.isEmpty()) {
+            return new HashMap<>();
+        }
         Map<Long, Long> map = new HashMap<>();
         for (Object[] row : results) {
             map.put((Long) row[0], (Long) row[1]);
         }
+        log.info("Return requestsByEventIds={}", eventIds);
         return map;
     }
 

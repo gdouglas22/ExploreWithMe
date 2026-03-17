@@ -16,8 +16,7 @@ import java.util.List;
 @Slf4j
 public class StatClient {
 
-    private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final RestTemplate restTemplate;
 
@@ -36,20 +35,23 @@ public class StatClient {
             List<String> uris,
             boolean unique
     ) {
-
+        log.info("start={}, end={}, uris={}, unique={}", start, end, uris, unique);
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromPath("/stats")
-                .queryParam("start", start.format(FORMATTER))
-                .queryParam("end", end.format(FORMATTER))
+                .queryParam("start", start.format(formatter).replace(" ", "+"))
+                .queryParam("end", end.format(formatter).replace(" ", "+"))
                 .queryParam("unique", unique);
+        log.info("builder={}", builder);
 
         if (uris != null && !uris.isEmpty()) {
             uris.forEach(uri -> builder.queryParam("uris", uri));
         }
 
+        log.info("builder={}", builder);
+
         ViewStats[] response = restTemplate
                 .getForObject(builder.toUriString(), ViewStats[].class);
-
+        log.info("response", response);
         return response != null ? Arrays.asList(response) : List.of();
     }
 }

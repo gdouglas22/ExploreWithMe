@@ -3,7 +3,6 @@ package ru.practicum.explorewithme.controller.category;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
 import ru.practicum.explorewithme.dto.category.NewCategory;
@@ -11,7 +10,7 @@ import ru.practicum.explorewithme.service.category.CategoryService;
 
 import java.net.URI;
 
-@Controller
+@RestController
 @RequestMapping("/admin/categories")
 @RequiredArgsConstructor
 public class CategoryAdminController {

@@ -2,8 +2,8 @@ package ru.practicum.explorewithme.service.event;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,12 +11,7 @@ import ru.practicum.explorewithme.client.StatClient;
 import ru.practicum.explorewithme.dto.EndpointHit;
 import ru.practicum.explorewithme.dto.ViewStats;
 import ru.practicum.explorewithme.dto.category.CategoryDto;
-import ru.practicum.explorewithme.dto.event.EventAdminRequest;
-import ru.practicum.explorewithme.dto.event.EventFullDto;
-import ru.practicum.explorewithme.dto.event.EventShortDto;
-import ru.practicum.explorewithme.dto.event.NewEventDto;
-import ru.practicum.explorewithme.dto.event.UpdateEventAdminRequest;
-import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
+import ru.practicum.explorewithme.dto.event.*;
 import ru.practicum.explorewithme.exception.BadRequestException;
 import ru.practicum.explorewithme.exception.ConflictDataException;
 import ru.practicum.explorewithme.exception.NotFoundException;
@@ -27,11 +22,11 @@ import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.event.StateAction;
 import ru.practicum.explorewithme.model.location.Location;
+import ru.practicum.explorewithme.model.user.User;
 import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.UserRepository;
 import ru.practicum.explorewithme.service.category.CategoryService;
 import ru.practicum.explorewithme.service.request.RequestService;
-import ru.practicum.explorewithme.model.user.User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -72,13 +67,11 @@ public class EventServiceImpl implements EventService {
         LocalDateTime earliestDate = getEarliestDateInPage(page);
 
         Set<Long> eventIds = getEventId(page);
-
         Map<Long, Long> amountRequestsByEventIds = requestService.countRequestsByEventIds(eventIds);
         Map<Long, Long> viewByEventIds = getNotUniqueStatsByEventIds(eventIds, earliestDate);
 
-        log.info("Return event");
 
-        return page.map(event -> {
+        Page<EventFullDto> returnedPage = page.map(event -> {
             Long amountRequest = amountRequestsByEventIds.get(event.getId());
             Long amountRequestResult = amountRequest == null ? 0 : amountRequest;
 
@@ -87,6 +80,9 @@ public class EventServiceImpl implements EventService {
 
             return EventMapper.toEventFullDto(event, amountRequestResult, resultStat);
         });
+
+        log.info("Return event by param={}", returnedPage);
+        return returnedPage;
     }
 
     @Override
@@ -126,6 +122,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<EventShortDto> getByUserId(Long userId, int from, int size) {
+        log.info("Try to ger List<EventShortDto> by userId={}, from={}, size={}", userId, from, size);
         getUserById(userId);
         PageRequest pageRequest = PageRequest.of(from > 0 ? from / size : 0, size);
         Page<Event> page = eventRepository.findAllByInitiatorId(userId, pageRequest);
@@ -276,10 +273,13 @@ public class EventServiceImpl implements EventService {
     }
 
     private Set<Long> getEventId(Page<Event> page) {
-        return page.getContent()
+        log.info("Try to get getEventIds");
+        Set<Long> set = page.getContent()
                 .stream()
                 .map(Event::getId)
                 .collect(Collectors.toSet());
+        log.info("Return Set<Long> EventIds");
+        return set;
     }
 
     private LocalDateTime getEarliestDateInPage(Page<Event> page) {
@@ -314,6 +314,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private Map<Long, Long> getNotUniqueStatsByEventIds(Set<Long> eventIds, LocalDateTime from) {
+        log.info("Try to get getNotUniqueStatsByEventIds eventIds={}, from={}", eventIds, from);
         if (eventIds.isEmpty() || from == null) {
             return Map.of();
         }
@@ -321,7 +322,10 @@ public class EventServiceImpl implements EventService {
         eventIds.forEach(eventId -> uris.add(uri + eventId));
 
         List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, false);
-        return viewStats.stream()
+        if (viewStats.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<Long, Long> map = viewStats.stream()
                 .collect(Collectors.toMap(
                         viewStat -> {
                             String[] parts = viewStat.uri().split("/");
@@ -330,6 +334,8 @@ public class EventServiceImpl implements EventService {
                         },
                         ViewStats::hits,
                         (existing, replacement) -> existing));
+        log.info("Return NotUniqueStatsByEventIds eventIds={}, from={}", eventIds, from);
+        return map;
     }
 
     private Long getNotUniqueStatsByEventId(Long eventId, LocalDateTime from) {

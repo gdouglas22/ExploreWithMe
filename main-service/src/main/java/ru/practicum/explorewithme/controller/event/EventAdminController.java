@@ -7,7 +7,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.event.EventAdminRequest;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
@@ -16,7 +15,7 @@ import ru.practicum.explorewithme.service.event.EventService;
 
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("/admin/events")
 @RequiredArgsConstructor
 public class EventAdminController {

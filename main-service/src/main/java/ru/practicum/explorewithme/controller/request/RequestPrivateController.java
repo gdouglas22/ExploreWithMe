@@ -3,14 +3,13 @@ package ru.practicum.explorewithme.controller.request;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 import ru.practicum.explorewithme.service.request.RequestService;
 
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("/users/{userId}/requests")
 @RequiredArgsConstructor
 public class RequestPrivateController {

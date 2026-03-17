@@ -37,7 +37,13 @@ class UserControllerIntegrationTest {
 
     @BeforeEach
     void clearDatabase() {
-        JdbcTestUtils.deleteFromTables(jdbcTemplate, "users");
+        JdbcTestUtils.deleteFromTables(jdbcTemplate, "compilation_events",
+                "requests",
+                "events",
+                "compilations",
+                "locations",
+                "categories",
+                "users");
     }
 
     @Test
@@ -106,7 +112,8 @@ class UserControllerIntegrationTest {
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
-        Map<String, Object> userMap = objectMapper.readValue(responseBody, new TypeReference<>() {});
+        Map<String, Object> userMap = objectMapper.readValue(responseBody, new TypeReference<>() {
+        });
         Long userId = ((Number) userMap.get("id")).longValue();
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/admin/users/{id}", userId)
