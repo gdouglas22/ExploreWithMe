@@ -147,6 +147,7 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> searchPublicEvents(String text, List<Long> categories, Boolean paid,
                                                   String rangeStart, String rangeEnd, Boolean onlyAvailable,
                                                   String sort, int from, int size, String requestUri, String ip) {
+        log.info("Try to searchPublicEvents by param text={}, categoties={}, paid={}", text, categories, paid);
         LocalDateTime start = parsePublicRangeStart(rangeStart, rangeEnd);
         LocalDateTime end = parseNullableDate(rangeEnd);
 
@@ -154,7 +155,9 @@ public class EventServiceImpl implements EventService {
             throw new BadRequestException("Range start must be before range end");
         }
 
-        List<Event> events = eventRepository.findPublicEvents(
+        log.info("Try to find public event in repository");
+
+        List<Event> events = eventRepository.findEventsByFilters(
                 text,
                 normalizeIds(categories),
                 paid,
@@ -162,6 +165,8 @@ public class EventServiceImpl implements EventService {
                 end,
                 Boolean.TRUE.equals(onlyAvailable)
         );
+
+        log.info("Found event in repository.");
 
         if (events.isEmpty()) {
             saveHit(requestUri, ip);
@@ -184,8 +189,9 @@ public class EventServiceImpl implements EventService {
                         confirmedRequestsByEventIds.getOrDefault(event.getId(), 0L),
                         viewsByEventIds.getOrDefault(event.getId(), 0L)))
                 .toList();
-
+        log.info("Return List<EventShortDto>.");
         saveHit(requestUri, ip);
+        log.info("Saved hit.");
         return result;
     }
 
