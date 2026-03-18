@@ -234,6 +234,7 @@ public class EventServiceImpl implements EventService {
             event.setPaid(updateEvent.getPaid());
         }
         if (updateEvent.hasParticipantLimit()) {
+            checkParticipantLimit(updateEvent.getParticipantLimit());
             event.setParticipantLimit(updateEvent.getParticipantLimit());
         }
         if (updateEvent.hasRequestModeration()) {
@@ -256,6 +257,13 @@ public class EventServiceImpl implements EventService {
         return EventMapper.toEventFullDto(savedEvent, confirmedRequests, views);
     }
 
+    private void checkParticipantLimit(Integer participantLimit) {
+        if (participantLimit <= 0) {
+            log.error("ParticipantLimit can't be zero or negative ={}", participantLimit);
+            throw new BadRequestException("ParticipantLimit can't be zero or negative");
+        }
+    }
+
     @Override
     public EventFullDto updateEventAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest) {
         Optional<Event> optionalEvent = eventRepository.findById(eventId);
@@ -271,11 +279,6 @@ public class EventServiceImpl implements EventService {
         Long viewByEventId = getNotUniqueStatsByEventId(savedEvent.getId(), savedEvent.getCreatedOn());
 
         return EventMapper.toEventFullDto(event, amountRequestsByEventId, viewByEventId);
-    }
-
-    @Override
-    public boolean eventExists(Long eventId) {
-        return eventRepository.existsById(eventId);
     }
 
     private Set<Long> getEventId(Page<Event> page) {
