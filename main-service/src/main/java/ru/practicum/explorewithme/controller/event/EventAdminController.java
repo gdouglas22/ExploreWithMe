@@ -3,6 +3,7 @@ package ru.practicum.explorewithme.controller.event;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -24,7 +25,7 @@ public class EventAdminController {
     private final EventService eventService;
 
     @GetMapping
-    public ResponseEntity<List<EventFullDto>> getEvents(@RequestParam(required = false) List<Long> users,
+    public ResponseEntity<Page<EventFullDto>> getEvents(@RequestParam(required = false) List<Long> users,
                                                         @RequestParam(required = false) List<String> states,
                                                         @RequestParam(required = false) List<Long> categories,
                                                         @RequestParam(required = false) String rangeStart,
@@ -35,7 +36,7 @@ public class EventAdminController {
         EventAdminRequest eventAdminRequest = new EventAdminRequest(users, states, categories,
                 rangeStart, rangeEnd);
 
-        List<EventFullDto> events = eventService.getEventByParam(eventAdminRequest, pageable).getContent();
+        Page<EventFullDto> events = eventService.getEventByParam(eventAdminRequest, pageable);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(events);
     }
 

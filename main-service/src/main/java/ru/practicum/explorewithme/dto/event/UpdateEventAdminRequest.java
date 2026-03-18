@@ -4,7 +4,6 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import ru.practicum.explorewithme.model.location.Location;
-import ru.practicum.explorewithme.utils.validation.annotation.DateTimeTwoHoursLater;
 
 @Getter
 @Setter
@@ -21,7 +20,6 @@ public class UpdateEventAdminRequest {
     @Size(min = 20, max = 7000)
     private String description;
 
-    @DateTimeTwoHoursLater
     private String eventDate;
     private Location location;
     private Boolean paid;

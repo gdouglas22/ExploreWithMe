@@ -2,17 +2,23 @@ package ru.practicum.explorewithme.utils.validation;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import lombok.RequiredArgsConstructor;
 import ru.practicum.explorewithme.utils.validation.annotation.DateTimeTwoHoursLater;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-@RequiredArgsConstructor
 public class DateTimeTwoHoursLaterValidator implements ConstraintValidator<DateTimeTwoHoursLater, String> {
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final Clock clock;
+
+    public DateTimeTwoHoursLaterValidator() {
+        this.clock = Clock.systemUTC();
+    }
+
+    public DateTimeTwoHoursLaterValidator(Clock clock) {
+        this.clock = clock;
+    }
 
     @Override
     public boolean isValid(String dateTimeString, ConstraintValidatorContext context) {

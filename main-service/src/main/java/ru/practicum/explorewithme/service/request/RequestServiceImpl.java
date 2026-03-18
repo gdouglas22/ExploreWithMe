@@ -238,7 +238,7 @@ public class RequestServiceImpl implements RequestService {
             log.error("Canceled request can only requestor={}", request.getRequester().getId());
             throw new ConflictDataException("Canceled request can only requestor");
         }
-        request.setStatus(Status.CANCELED);
+        request.setStatus(Status.REJECTED);
         Request savedRequest = requestRepository.save(request);
         log.info("Successfully rejected requestId={} by userId={}", userId, requestId);
         return RequestMapper.toParticipationRequestDto(savedRequest);
@@ -259,7 +259,7 @@ public class RequestServiceImpl implements RequestService {
         if (event.getParticipantLimit() == null || Objects.equals(event.getParticipantLimit(), 0)) {
             return;
         }
-        Long amountRequest = countConfirmedRequestsByEventId(event.getId());
+        Long amountRequest = countRequestsByEventId(event.getId());
         if (amountRequest >= event.getParticipantLimit()) {
             log.error("Event={} has no available spots for participation", event.getId());
             throw new ConflictDataException("Event=" + event.getId() + " has no available spots for participation");
