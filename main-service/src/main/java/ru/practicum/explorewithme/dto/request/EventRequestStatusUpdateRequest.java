@@ -1,5 +1,7 @@
 package ru.practicum.explorewithme.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +17,8 @@ import java.util.List;
 @NoArgsConstructor
 public class EventRequestStatusUpdateRequest {
     @NotNull
+    @JsonAlias("requestId")
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     private List<Long> requestIds;
     @NotNull
     private Status status;
