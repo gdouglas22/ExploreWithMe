@@ -404,6 +404,10 @@ public class EventServiceImpl implements EventService {
 
         if (updateEventAdminRequest.hasEventDate()) {
             LocalDateTime eventDate = parseDate(updateEventAdminRequest.getEventDate());
+            if (eventDate.isBefore(LocalDateTime.now())) {
+                log.error("event date is already in the past={}", eventDate);
+                throw new BadRequestException("Event date must be in the future");
+            }
             LocalDateTime minAllowedDate = event.getPublishedOn() == null
                     ? LocalDateTime.now().plusHours(1)
                     : event.getPublishedOn().plusHours(1);
