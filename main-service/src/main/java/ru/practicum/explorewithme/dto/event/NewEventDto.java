@@ -2,6 +2,7 @@ package ru.practicum.explorewithme.dto.event;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,6 +32,7 @@ public class NewEventDto {
     @Builder.Default
     private Boolean paid = false;
     @Builder.Default
+    @Positive
     private Integer participantLimit = 10;
     @Builder.Default
     private Boolean requestModeration = true;

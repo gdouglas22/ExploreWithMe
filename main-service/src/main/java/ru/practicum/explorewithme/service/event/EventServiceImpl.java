@@ -91,7 +91,6 @@ public class EventServiceImpl implements EventService {
         log.info("Try to create event by userId={}", userId);
         User initiator = getUserById(userId);
         CategoryDto categoryDto = categoryService.getCateGoryById(newEventDto.getCategory());
-
         Event event = Event.builder()
                 .annotation(newEventDto.getAnnotation())
                 .category(new Category(categoryDto.id(), categoryDto.name()))
@@ -234,7 +233,6 @@ public class EventServiceImpl implements EventService {
             event.setPaid(updateEvent.getPaid());
         }
         if (updateEvent.hasParticipantLimit()) {
-            checkParticipantLimit(updateEvent.getParticipantLimit());
             event.setParticipantLimit(updateEvent.getParticipantLimit());
         }
         if (updateEvent.hasRequestModeration()) {
@@ -255,13 +253,6 @@ public class EventServiceImpl implements EventService {
         Long confirmedRequests = requestService.countRequestsByEventId(savedEvent.getId());
         Long views = getNotUniqueStatsByEventId(savedEvent.getId(), savedEvent.getCreatedOn());
         return EventMapper.toEventFullDto(savedEvent, confirmedRequests, views);
-    }
-
-    private void checkParticipantLimit(Integer participantLimit) {
-        if (participantLimit <= 0) {
-            log.error("ParticipantLimit can't be zero or negative ={}", participantLimit);
-            throw new BadRequestException("ParticipantLimit can't be zero or negative");
-        }
     }
 
     @Override
