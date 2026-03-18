@@ -238,7 +238,7 @@ public class RequestServiceImpl implements RequestService {
             log.error("Canceled request can only requestor={}", request.getRequester().getId());
             throw new ConflictDataException("Canceled request can only requestor");
         }
-        request.setStatus(Status.REJECTED);
+        request.setStatus(Status.CANCELED);
         Request savedRequest = requestRepository.save(request);
         log.info("Successfully rejected requestId={} by userId={}", userId, requestId);
         return RequestMapper.toParticipationRequestDto(savedRequest);

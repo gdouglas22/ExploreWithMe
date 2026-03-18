@@ -353,7 +353,7 @@ public class EventServiceImpl implements EventService {
         List<String> uris = new ArrayList<>();
         eventIds.forEach(eventId -> uris.add(uri + eventId));
 
-        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, false);
+        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, true);
         if (viewStats.isEmpty()) {
             return new HashMap<>();
         }
@@ -376,7 +376,7 @@ public class EventServiceImpl implements EventService {
         }
         List<String> uris = List.of(uri + eventId);
 
-        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, false);
+        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, true);
         return viewStats.stream()
                 .map(ViewStats::hits)
                 .mapToLong(Long::longValue)
