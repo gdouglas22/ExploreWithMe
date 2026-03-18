@@ -5,6 +5,9 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
+import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateResult;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 import ru.practicum.explorewithme.exception.BadRequestException;
 import ru.practicum.explorewithme.exception.ConflictDataException;
@@ -90,6 +93,7 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
+    @Transactional
     public ParticipationRequestDto addUserRequest(Long requesterId, Long eventId) {
         log.info("Try to make new Request");
 
@@ -103,7 +107,10 @@ public class RequestServiceImpl implements RequestService {
         checkRequesterIsNotOwnerEvent(requesterId, eventProxy);
         checkEventIsAbleToRequest(eventProxy);
 
-        Status requestStatus = eventProxy.getRequestModeration() ? Status.PENDING : Status.CONFIRMED;
+        Status requestStatus = Boolean.FALSE.equals(eventProxy.getRequestModeration())
+                || Objects.equals(eventProxy.getParticipantLimit(), 0)
+                ? Status.CONFIRMED
+                : Status.PENDING;
 
         LocalDateTime created = LocalDateTime.now();
 
@@ -119,6 +126,108 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        Event event = getEventByOwnerOrThrow(userId, eventId);
+        return requestRepository.findAllByEventId(event.getId()).stream()
+                .map(RequestMapper::toParticipationRequestDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public EventRequestStatusUpdateResult updateEventRequests(Long userId,
+                                                              Long eventId,
+                                                              EventRequestStatusUpdateRequest updateRequest) {
+        Event event = getEventByOwnerOrThrow(userId, eventId);
+        if (updateRequest.getRequestIds() == null || updateRequest.getRequestIds().isEmpty()) {
+            throw new BadRequestException("Request ids must not be empty");
+        }
+        if (updateRequest.getStatus() == null) {
+            throw new BadRequestException("Status must not be null");
+        }
+
+        List<Request> requests = requestRepository.findAllByIdInAndEventId(updateRequest.getRequestIds(), eventId);
+        if (requests.size() != updateRequest.getRequestIds().size()) {
+            throw new NotFoundException("Request was not found");
+        }
+        if (requests.stream().anyMatch(request -> request.getStatus() != Status.PENDING)) {
+            throw new ConflictDataException("Only pending requests can be updated");
+        }
+
+        if (updateRequest.getStatus() == Status.REJECTED) {
+            requests.forEach(request -> request.setStatus(Status.REJECTED));
+            List<Request> savedRequests = requestRepository.saveAll(requests);
+            return EventRequestStatusUpdateResult.builder()
+                    .confirmedRequests(List.of())
+                    .rejectedRequests(savedRequests.stream()
+                            .map(RequestMapper::toParticipationRequestDto)
+                            .toList())
+                    .build();
+        }
+
+        if (updateRequest.getStatus() != Status.CONFIRMED) {
+            throw new BadRequestException("Unsupported status=" + updateRequest.getStatus());
+        }
+
+        if (Boolean.FALSE.equals(event.getRequestModeration()) || Objects.equals(event.getParticipantLimit(), 0)) {
+            throw new ConflictDataException("Confirmation is not required for this event");
+        }
+
+        long confirmedCount = countConfirmedRequestsByEventId(eventId);
+        int availableSlots = event.getParticipantLimit() - (int) confirmedCount;
+        if (availableSlots <= 0) {
+            throw new ConflictDataException("Event=" + eventId + " has no available spots for participation");
+        }
+
+        Map<Long, Integer> requestOrder = new HashMap<>();
+        for (int i = 0; i < updateRequest.getRequestIds().size(); i++) {
+            requestOrder.put(updateRequest.getRequestIds().get(i), i);
+        }
+        requests.sort(Comparator.comparingInt(request -> requestOrder.getOrDefault(request.getId(), Integer.MAX_VALUE)));
+
+        List<Request> confirmedRequests = new ArrayList<>();
+        List<Request> rejectedRequests = new ArrayList<>();
+
+        for (Request request : requests) {
+            if (availableSlots > 0) {
+                request.setStatus(Status.CONFIRMED);
+                confirmedRequests.add(request);
+                availableSlots--;
+            } else {
+                request.setStatus(Status.REJECTED);
+                rejectedRequests.add(request);
+            }
+        }
+
+        if (availableSlots == 0) {
+            Set<Long> handledRequestIds = requests.stream()
+                    .map(Request::getId)
+                    .collect(HashSet::new, HashSet::add, HashSet::addAll);
+            List<Request> pendingRequests = requestRepository.findAllByEventIdAndStatus(eventId, Status.PENDING);
+            pendingRequests.stream()
+                    .filter(request -> !handledRequestIds.contains(request.getId()))
+                    .forEach(request -> {
+                        request.setStatus(Status.REJECTED);
+                        rejectedRequests.add(request);
+                    });
+        }
+
+        requestRepository.saveAll(confirmedRequests);
+        requestRepository.saveAll(rejectedRequests);
+
+        return EventRequestStatusUpdateResult.builder()
+                .confirmedRequests(confirmedRequests.stream()
+                        .map(RequestMapper::toParticipationRequestDto)
+                        .toList())
+                .rejectedRequests(rejectedRequests.stream()
+                        .map(RequestMapper::toParticipationRequestDto)
+                        .toList())
+                .build();
+    }
+
+    @Override
+    @Transactional
     public ParticipationRequestDto rejectUserRequest(Long userId, Long requestId) {
         log.info("Try to reject requestId={} by userId={}", userId, requestId);
         checkUserExistInDB(userId);
@@ -129,7 +238,7 @@ public class RequestServiceImpl implements RequestService {
             log.error("Canceled request can only requestor={}", request.getRequester().getId());
             throw new ConflictDataException("Canceled request can only requestor");
         }
-        request.setStatus(Status.REJECTED);
+        request.setStatus(Status.CANCELED);
         Request savedRequest = requestRepository.save(request);
         log.info("Successfully rejected requestId={} by userId={}", userId, requestId);
         return RequestMapper.toParticipationRequestDto(savedRequest);
@@ -147,7 +256,10 @@ public class RequestServiceImpl implements RequestService {
             log.error("Event={} is not published", event.getId());
             throw new ConflictDataException("Event=" + event.getId() + " is not published");
         }
-        Long amountRequest = countRequestsByEventId(event.getId());
+        if (event.getParticipantLimit() == null || Objects.equals(event.getParticipantLimit(), 0)) {
+            return;
+        }
+        Long amountRequest = countConfirmedRequestsByEventId(event.getId());
         if (amountRequest >= event.getParticipantLimit()) {
             log.error("Event={} has no available spots for participation", event.getId());
             throw new ConflictDataException("Event=" + event.getId() + " has no available spots for participation");
@@ -205,5 +317,15 @@ public class RequestServiceImpl implements RequestService {
             map.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
         }
         return map;
+    }
+
+    private Event getEventByOwnerOrThrow(Long userId, Long eventId) {
+        checkUserExistInDB(userId);
+        checkEventExistInDB(eventId);
+        Event event = entityManager.getReference(Event.class, eventId);
+        if (!event.getInitiator().getId().equals(userId)) {
+            throw new NotFoundException("Event was not found with id=" + eventId);
+        }
+        return event;
     }
 }

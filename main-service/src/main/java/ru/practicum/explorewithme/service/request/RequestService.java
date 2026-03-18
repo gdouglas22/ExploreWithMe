@@ -1,5 +1,7 @@
 package ru.practicum.explorewithme.service.request;
 
+import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
+import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateResult;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
 
 import java.util.List;
@@ -18,6 +20,12 @@ public interface RequestService {
     List<ParticipationRequestDto> getUserRequests(Long userId);
 
     ParticipationRequestDto addUserRequest(Long userId, Long eventId);
+
+    List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId);
+
+    EventRequestStatusUpdateResult updateEventRequests(Long userId,
+                                                       Long eventId,
+                                                       EventRequestStatusUpdateRequest updateRequest);
 
     ParticipationRequestDto rejectUserRequest(Long userId, Long requestId);
 }

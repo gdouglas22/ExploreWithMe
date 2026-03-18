@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.dto.event;
 
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
 import ru.practicum.explorewithme.dto.location.LocationDto;
 import ru.practicum.explorewithme.model.event.StateAction;
@@ -21,6 +22,7 @@ public class UpdateEventUserRequest {
     private String eventDate;
     private LocationDto location;
     private Boolean paid;
+    @PositiveOrZero
     private Integer participantLimit;
     private Boolean requestModeration;
     private StateAction stateAction;

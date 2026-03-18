@@ -16,5 +16,6 @@ import java.util.List;
 public class EventRequestStatusUpdateRequest {
     @NotNull
     private List<Long> requestIds;
+    @NotNull
     private Status status;
 }

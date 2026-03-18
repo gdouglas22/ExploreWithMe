@@ -5,19 +5,20 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.request.Request;
+import ru.practicum.explorewithme.model.request.Status;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public interface EventRepository extends JpaRepository<Event, Long> {
+public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
 
     @Query("SELECT e FROM Event e " +
             "WHERE e.initiator.id IN :users " +
@@ -40,12 +41,13 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     Optional<Event> findByIdAndState(Long eventId, State state);
 
-    List<Event> findAll(Specification<Event> spec);
-
     default List<Event> findEventsByFilters(String text, List<Long> categories, Boolean paid,
                                             LocalDateTime start, LocalDateTime end, Boolean onlyAvailable) {
         return findAll((root, query, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.conjunction();
+
+            predicate = criteriaBuilder.and(predicate,
+                    criteriaBuilder.equal(root.get("state"), State.PUBLISHED));
 
             if (text != null && !text.trim().isEmpty()) {
                 String searchPattern = "%" + text.toLowerCase() + "%";
@@ -81,11 +83,15 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                 Subquery<Long> requestCount = query.subquery(Long.class);
                 Root<Request> requestRoot = requestCount.from(Request.class);
                 requestCount.select(criteriaBuilder.count(requestRoot))
-                        .where(criteriaBuilder.equal(requestRoot.get("event"), root));
+                        .where(
+                                criteriaBuilder.equal(requestRoot.get("event"), root),
+                                criteriaBuilder.equal(requestRoot.get("status"), Status.CONFIRMED)
+                        );
 
                 predicate = criteriaBuilder.and(predicate,
                         criteriaBuilder.or(
                                 criteriaBuilder.isNull(root.get("participantLimit")),
+                                criteriaBuilder.equal(root.get("participantLimit"), 0),
                                 criteriaBuilder.greaterThan(root.get("participantLimit"), requestCount)
                         )
                 );

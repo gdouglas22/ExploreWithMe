@@ -38,6 +38,12 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
 
     Optional<Request> findByRequesterIdAndEventId(Long requesterId, Long eventId);
 
+    List<Request> findAllByEventId(Long eventId);
+
+    List<Request> findAllByIdInAndEventId(List<Long> requestIds, Long eventId);
+
+    List<Request> findAllByEventIdAndStatus(Long eventId, ru.practicum.explorewithme.model.request.Status status);
+
     @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.id = :userId")
     boolean existsUserById(Long userId);
 

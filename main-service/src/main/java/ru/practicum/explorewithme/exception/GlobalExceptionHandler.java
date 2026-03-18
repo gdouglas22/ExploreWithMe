@@ -1,5 +1,6 @@
 package ru.practicum.explorewithme.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError.builder()
                 .status(HttpStatus.BAD_REQUEST.toString())
                 .reason("400 BAD_REQUEST")
+                .message(exception.getMessage())
+                .timestamp(LocalDateTime.now().format(dateTimeFormatter))
+                .build());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException exception) {
+        log.error("400 {}", exception.getMessage(), exception);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError.builder()
+                .status(HttpStatus.BAD_REQUEST.toString())
+                .reason("Incorrectly made request.")
                 .message(exception.getMessage())
                 .timestamp(LocalDateTime.now().format(dateTimeFormatter))
                 .build());

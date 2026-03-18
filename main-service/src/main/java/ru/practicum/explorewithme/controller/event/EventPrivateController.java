@@ -1,8 +1,10 @@
 package ru.practicum.explorewithme.controller.event;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
 import ru.practicum.explorewithme.dto.event.EventShortDto;
@@ -13,6 +15,7 @@ import ru.practicum.explorewithme.service.event.EventService;
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/users/{userId}/events")
 @RequiredArgsConstructor
 public class EventPrivateController {
@@ -38,8 +41,8 @@ public class EventPrivateController {
     @GetMapping
     public List<EventShortDto> getByUserId(
             @PathVariable(value = "userId") Long userId,
-            @RequestParam(value = "from", defaultValue = "0") int from,
-            @RequestParam(value = "size", defaultValue = "10") int size
+            @RequestParam(value = "from", defaultValue = "0") @Min(0) int from,
+            @RequestParam(value = "size", defaultValue = "10") @Min(1) int size
     ) {
         return eventService.getByUserId(userId, from, size);
     }

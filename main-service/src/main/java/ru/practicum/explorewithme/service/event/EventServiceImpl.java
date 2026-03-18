@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.client.StatClient;
@@ -53,21 +54,40 @@ public class EventServiceImpl implements EventService {
         log.info("Try to get event by param={}", eventAdminRequest);
 
         List<State> states = parseState(eventAdminRequest.states());
-        LocalDateTime rangeStart = parseDate(eventAdminRequest.rangeStart());
-        LocalDateTime rangeEnd = parseDate(eventAdminRequest.rangeEnd());
+        LocalDateTime rangeStart = parseNullableDate(eventAdminRequest.rangeStart());
+        LocalDateTime rangeEnd = parseNullableDate(eventAdminRequest.rangeEnd());
+        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+            throw new BadRequestException("Range start must be before range end");
+        }
 
-        Page<Event> page = eventRepository.findByEventAdminRequest(
-                eventAdminRequest.users(),
-                states,
-                eventAdminRequest.categories(),
-                rangeStart,
-                rangeEnd,
-                pageable);
+        Specification<Event> specification = (root, query, criteriaBuilder) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            if (eventAdminRequest.users() != null && !eventAdminRequest.users().isEmpty()) {
+                predicates.add(root.get("initiator").get("id").in(eventAdminRequest.users()));
+            }
+            if (states != null && !states.isEmpty()) {
+                predicates.add(root.get("state").in(states));
+            }
+            if (eventAdminRequest.categories() != null && !eventAdminRequest.categories().isEmpty()) {
+                predicates.add(root.get("category").get("id").in(eventAdminRequest.categories()));
+            }
+            if (rangeStart != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
+            }
+            if (rangeEnd != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<Event> page = eventRepository.findAll(specification, pageable);
 
         LocalDateTime earliestDate = getEarliestDateInPage(page);
 
         Set<Long> eventIds = getEventId(page);
-        Map<Long, Long> amountRequestsByEventIds = requestService.countRequestsByEventIds(eventIds);
+        Map<Long, Long> amountRequestsByEventIds = requestService.countConfirmedRequestsByEventIds(eventIds);
         Map<Long, Long> viewByEventIds = getNotUniqueStatsByEventIds(eventIds, earliestDate);
 
 
@@ -91,6 +111,7 @@ public class EventServiceImpl implements EventService {
         log.info("Try to create event by userId={}", userId);
         User initiator = getUserById(userId);
         CategoryDto categoryDto = categoryService.getCateGoryById(newEventDto.getCategory());
+        checkParticipantLimit(newEventDto.getParticipantLimit());
 
         Event event = Event.builder()
                 .annotation(newEventDto.getAnnotation())
@@ -115,7 +136,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventFullDto getByUserIdAndId(Long userId, Long eventId) {
         Event event = getEventByUserIdAndIdOrThrow(userId, eventId);
-        Long confirmedRequests = requestService.countRequestsByEventId(eventId);
+        Long confirmedRequests = requestService.countConfirmedRequestsByEventId(eventId);
         Long views = getNotUniqueStatsByEventId(eventId, event.getCreatedOn());
         return EventMapper.toEventFullDto(event, confirmedRequests, views);
     }
@@ -132,7 +153,7 @@ public class EventServiceImpl implements EventService {
 
         LocalDateTime earliestDate = getEarliestDateInPage(page);
         Set<Long> eventIds = getEventId(page);
-        Map<Long, Long> amountRequestsByEventIds = requestService.countRequestsByEventIds(eventIds);
+        Map<Long, Long> amountRequestsByEventIds = requestService.countConfirmedRequestsByEventIds(eventIds);
         Map<Long, Long> viewByEventIds = getNotUniqueStatsByEventIds(eventIds, earliestDate);
 
         return page.getContent().stream()
@@ -252,15 +273,15 @@ public class EventServiceImpl implements EventService {
         }
 
         Event savedEvent = eventRepository.save(event);
-        Long confirmedRequests = requestService.countRequestsByEventId(savedEvent.getId());
+        Long confirmedRequests = requestService.countConfirmedRequestsByEventId(savedEvent.getId());
         Long views = getNotUniqueStatsByEventId(savedEvent.getId(), savedEvent.getCreatedOn());
         return EventMapper.toEventFullDto(savedEvent, confirmedRequests, views);
     }
 
     private void checkParticipantLimit(Integer participantLimit) {
-        if (participantLimit <= 0) {
-            log.error("ParticipantLimit can't be zero or negative ={}", participantLimit);
-            throw new BadRequestException("ParticipantLimit can't be zero or negative");
+        if (participantLimit != null && participantLimit < 0) {
+            log.error("ParticipantLimit can't be negative ={}", participantLimit);
+            throw new BadRequestException("ParticipantLimit can't be negative");
         }
     }
 
@@ -277,10 +298,10 @@ public class EventServiceImpl implements EventService {
         Event updatedEvent = validateAndUpdate(event, updateEventAdminRequest);
         Event savedEvent = eventRepository.saveAndFlush(updatedEvent);
 
-        Long amountRequestsByEventId = requestService.countRequestsByEventId(savedEvent.getId());
+        Long amountRequestsByEventId = requestService.countConfirmedRequestsByEventId(savedEvent.getId());
         Long viewByEventId = getNotUniqueStatsByEventId(savedEvent.getId(), savedEvent.getCreatedOn());
 
-        return EventMapper.toEventFullDto(event, amountRequestsByEventId, viewByEventId);
+        return EventMapper.toEventFullDto(savedEvent, amountRequestsByEventId, viewByEventId);
     }
 
     private Set<Long> getEventId(Page<Event> page) {
@@ -332,7 +353,7 @@ public class EventServiceImpl implements EventService {
         List<String> uris = new ArrayList<>();
         eventIds.forEach(eventId -> uris.add(uri + eventId));
 
-        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, false);
+        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, true);
         if (viewStats.isEmpty()) {
             return new HashMap<>();
         }
@@ -355,7 +376,7 @@ public class EventServiceImpl implements EventService {
         }
         List<String> uris = List.of(uri + eventId);
 
-        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, false);
+        List<ViewStats> viewStats = statClient.getStat(from, LocalDateTime.now(), uris, true);
         return viewStats.stream()
                 .map(ViewStats::hits)
                 .mapToLong(Long::longValue)
@@ -366,24 +387,29 @@ public class EventServiceImpl implements EventService {
     private Event validateAndUpdate(Event event, UpdateEventAdminRequest updateEventAdminRequest) {
         if (updateEventAdminRequest.hasStateAction()) {
             StateAction action = StateAction.valueOf(updateEventAdminRequest.getStateAction());
-            if (!event.getState().equals(State.PENDING)) {
-                log.info("Cannot publish the event because it's not in the right state={}", event.getState());
-                throw new ConflictDataException("Cannot publish the event because it's not in the right state");
-            }
             if (action.equals(StateAction.PUBLISH_EVENT)) {
+                if (!event.getState().equals(State.PENDING)) {
+                    log.info("Cannot publish the event because it's not in the right state={}", event.getState());
+                    throw new ConflictDataException("Cannot publish the event because it's not in the right state");
+                }
                 event.setState(State.PUBLISHED);
                 event.setPublishedOn(LocalDateTime.now());
-            } else {
+            } else if (action.equals(StateAction.REJECT_EVENT)) {
+                if (event.getState().equals(State.PUBLISHED)) {
+                    throw new ConflictDataException("Cannot reject the published event");
+                }
                 event.setState(State.CANCELED);
             }
         }
 
         if (updateEventAdminRequest.hasEventDate()) {
             LocalDateTime eventDate = parseDate(updateEventAdminRequest.getEventDate());
-            if (eventDate.isBefore(event.getPublishedOn().plusHours(1))) {
-                log.error("event date can't be earlier than={}", event.getPublishedOn().plusHours(1));
-                throw new ConflictDataException("event date can't be earlier than="
-                        + event.getPublishedOn().plusHours(1));
+            LocalDateTime minAllowedDate = event.getPublishedOn() == null
+                    ? LocalDateTime.now().plusHours(1)
+                    : event.getPublishedOn().plusHours(1);
+            if (eventDate.isBefore(minAllowedDate)) {
+                log.error("event date can't be earlier than={}", minAllowedDate);
+                throw new ConflictDataException("event date can't be earlier than=" + minAllowedDate);
             }
             event.setEventDate(eventDate);
         }
@@ -413,6 +439,7 @@ public class EventServiceImpl implements EventService {
         }
 
         if (updateEventAdminRequest.hasParticipantLimit()) {
+            checkParticipantLimit(updateEventAdminRequest.getParticipantLimit());
             event.setParticipantLimit(updateEventAdminRequest.getParticipantLimit());
         }
 
