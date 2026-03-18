@@ -265,7 +265,9 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
     public EventFullDto updateEventAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest) {
+        log.info("Try to update by admin event={}", eventId);
         Optional<Event> optionalEvent = eventRepository.findById(eventId);
         if (optionalEvent.isEmpty()) {
             log.error("Event not found by ID={}", eventId);
@@ -273,7 +275,7 @@ public class EventServiceImpl implements EventService {
         }
         Event event = optionalEvent.get();
         Event updatedEvent = validateAndUpdate(event, updateEventAdminRequest);
-        Event savedEvent = eventRepository.save(updatedEvent);
+        Event savedEvent = eventRepository.saveAndFlush(updatedEvent);
 
         Long amountRequestsByEventId = requestService.countRequestsByEventId(savedEvent.getId());
         Long viewByEventId = getNotUniqueStatsByEventId(savedEvent.getId(), savedEvent.getCreatedOn());
@@ -362,7 +364,6 @@ public class EventServiceImpl implements EventService {
     }
 
     private Event validateAndUpdate(Event event, UpdateEventAdminRequest updateEventAdminRequest) {
-
         if (updateEventAdminRequest.hasStateAction()) {
             StateAction action = StateAction.valueOf(updateEventAdminRequest.getStateAction());
             if (!event.getState().equals(State.PENDING)) {
@@ -371,6 +372,7 @@ public class EventServiceImpl implements EventService {
             }
             if (action.equals(StateAction.PUBLISH_EVENT)) {
                 event.setState(State.PUBLISHED);
+                event.setPublishedOn(LocalDateTime.now());
             } else {
                 event.setState(State.CANCELED);
             }
