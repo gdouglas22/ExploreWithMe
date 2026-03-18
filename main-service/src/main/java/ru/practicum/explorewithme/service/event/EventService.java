@@ -2,12 +2,7 @@ package ru.practicum.explorewithme.service.event;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import ru.practicum.explorewithme.dto.event.EventAdminRequest;
-import ru.practicum.explorewithme.dto.event.EventFullDto;
-import ru.practicum.explorewithme.dto.event.EventShortDto;
-import ru.practicum.explorewithme.dto.event.NewEventDto;
-import ru.practicum.explorewithme.dto.event.UpdateEventAdminRequest;
-import ru.practicum.explorewithme.dto.event.UpdateEventUserRequest;
+import ru.practicum.explorewithme.dto.event.*;
 
 import java.util.List;
 
