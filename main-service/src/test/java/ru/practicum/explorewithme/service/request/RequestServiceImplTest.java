@@ -256,7 +256,7 @@ class RequestServiceImplTest {
         assertEquals(savedRequest.getEvent().getId(), result.event());
         assertEquals(savedRequest.getRequester().getId(), result.requester());
         assertEquals(savedRequest.getRequester().getId(), result.requester());
-        assertEquals(Status.REJECTED.name(), result.status());
+        assertEquals(Status.CANCELED.name(), result.status());
     }
 
     @Test

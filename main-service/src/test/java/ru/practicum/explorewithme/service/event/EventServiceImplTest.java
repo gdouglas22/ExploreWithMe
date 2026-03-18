@@ -144,7 +144,7 @@ class EventServiceImplTest {
         ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
 
         when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
-                Mockito.anyList(), Mockito.eq(false)))
+                Mockito.anyList(), Mockito.eq(true)))
                 .thenReturn(List.of(viewStats));
 
         Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
@@ -183,7 +183,7 @@ class EventServiceImplTest {
         ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
 
         when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
-                Mockito.anyList(), Mockito.eq(false)))
+                Mockito.anyList(), Mockito.eq(true)))
                 .thenReturn(List.of(viewStats));
 
         Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
@@ -216,7 +216,7 @@ class EventServiceImplTest {
         ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
 
         when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
-                Mockito.anyList(), Mockito.eq(false)))
+                Mockito.anyList(), Mockito.eq(true)))
                 .thenReturn(List.of(viewStats));
 
         Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);
@@ -248,7 +248,7 @@ class EventServiceImplTest {
         ViewStats viewStats = new ViewStats("", uris.getFirst(), 100L);
 
         when(statClient.getStat(Mockito.any(LocalDateTime.class), Mockito.any(LocalDateTime.class),
-                Mockito.anyList(), Mockito.eq(false)))
+                Mockito.anyList(), Mockito.eq(true)))
                 .thenReturn(List.of(viewStats));
 
         Page<EventFullDto> receivedPage = eventService.getEventByParam(request, pageable);

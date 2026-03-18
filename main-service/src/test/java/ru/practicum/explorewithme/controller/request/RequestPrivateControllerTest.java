@@ -75,7 +75,7 @@ class RequestPrivateControllerTest {
 
         mockMvc.perform(MockMvcRequestBuilders.post("/users/20/requests")
                         .param("eventId", "30"))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.created").value(created))
@@ -123,7 +123,7 @@ class RequestPrivateControllerTest {
                 created,
                 eventId,
                 userId,
-                Status.REJECTED.name());
+                Status.CANCELED.name());
 
         Mockito.when(requestService.rejectUserRequest(userId, requestId)).thenReturn(result);
 
@@ -134,7 +134,7 @@ class RequestPrivateControllerTest {
                 .andExpect(jsonPath("$.created").value(created))
                 .andExpect(jsonPath("$.event").value(30))
                 .andExpect(jsonPath("$.requester").value(userId))
-                .andExpect(jsonPath("$.status").value(Status.REJECTED.name()));
+                .andExpect(jsonPath("$.status").value(Status.CANCELED.name()));
 
         Mockito.verify(requestService, Mockito.times(1))
                 .rejectUserRequest(Mockito.eq(userId), Mockito.eq(requestId));

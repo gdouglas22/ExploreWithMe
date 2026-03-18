@@ -118,7 +118,7 @@ class UserControllerIntegrationTest {
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/admin/users/{id}", userId)
                         .contentType("application/json"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -170,4 +170,3 @@ class UserControllerIntegrationTest {
         assertEquals(2, users.size());
     }
 }
-
