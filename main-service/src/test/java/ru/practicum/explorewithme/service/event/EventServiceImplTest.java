@@ -265,9 +265,9 @@ class EventServiceImplTest {
     void updateEventAdminShouldUpdateFullEventCorrectly() {
         Event savedEvent = eventRepository.save(firstEvent);
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
-                .annotation("test_annotation".repeat(15))
+                .annotation("test_annotation".repeat(5))
                 .category(savedCategory2.getId())
-                .description("test_description".repeat(20))
+                .description("test_description".repeat(5))
                 .eventDate(LocalDateTime.now().plusHours(3).format(formatter))
                 .location(new Location(30L, 1.1f, 2.2f))
                 .paid(true)
@@ -279,9 +279,9 @@ class EventServiceImplTest {
 
         EventFullDto receivedEvent = eventService.updateEventAdmin(savedEvent.getId(), request);
 
-        assertEquals("test_annotation".repeat(15), receivedEvent.getAnnotation());
+        assertEquals("test_annotation".repeat(5), receivedEvent.getAnnotation());
         assertEquals(savedCategory2.getId(), receivedEvent.getCategory().id());
-        assertEquals("test_description".repeat(20), receivedEvent.getDescription());
+        assertEquals("test_description".repeat(5), receivedEvent.getDescription());
         assertEquals(request.getEventDate(), receivedEvent.getEventDate());
     }
 
@@ -289,17 +289,17 @@ class EventServiceImplTest {
     void updateEventAdminShouldUpdatePartlyEventCorrectly() {
         Event savedEvent = eventRepository.save(firstEvent);
         UpdateEventAdminRequest request = UpdateEventAdminRequest.builder()
-                .annotation("test_annotation".repeat(15))
+                .annotation("test_annotation".repeat(5))
                 .category(savedCategory2.getId())
-                .description("test_description".repeat(20))
+                .description("test_description".repeat(5))
                 .eventDate(LocalDateTime.now().plusHours(3).format(formatter))
                 .build();
 
         EventFullDto receivedEvent = eventService.updateEventAdmin(savedEvent.getId(), request);
 
-        assertEquals("test_annotation".repeat(15), receivedEvent.getAnnotation());
+        assertEquals("test_annotation".repeat(5), receivedEvent.getAnnotation());
         assertEquals(savedCategory2.getId(), receivedEvent.getCategory().id());
-        assertEquals("test_description".repeat(20), receivedEvent.getDescription());
+        assertEquals("test_description".repeat(5), receivedEvent.getDescription());
         assertEquals(request.getEventDate(), receivedEvent.getEventDate());
         assertEquals(savedEvent.getTitle(), receivedEvent.getTitle());
         assertEquals(savedEvent.getInitiator().getName(), receivedEvent.getInitiator().getName());
