@@ -259,8 +259,8 @@ public class RequestServiceImpl implements RequestService {
         if (event.getParticipantLimit() == null || Objects.equals(event.getParticipantLimit(), 0)) {
             return;
         }
-        Long amountRequest = countRequestsByEventId(event.getId());
-        if (amountRequest >= event.getParticipantLimit()) {
+        Long confirmedRequests = countConfirmedRequestsByEventId(event.getId());
+        if (confirmedRequests >= event.getParticipantLimit()) {
             log.error("Event={} has no available spots for participation", event.getId());
             throw new ConflictDataException("Event=" + event.getId() + " has no available spots for participation");
         }

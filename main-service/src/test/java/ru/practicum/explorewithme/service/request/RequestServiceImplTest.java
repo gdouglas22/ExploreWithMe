@@ -102,7 +102,7 @@ class RequestServiceImplTest {
         requestRepository.save(secondRequest);
 
         Request thirdRequest = new Request(3L, LocalDateTime.now().plusMinutes(2), savedEvent3,
-                savedRequester, Status.PENDING);
+                savedRequester, Status.CONFIRMED);
         requestRepository.save(thirdRequest);
     }
 
