@@ -85,10 +85,10 @@ class EventRequestPrivateControllerContractTest {
         Category category = categoryRepository.save(Category.builder()
                 .name("category")
                 .build());
-        Location location = locationRepository.save(Location.builder()
+        Location location = Location.builder()
                 .lat(10.0f)
                 .lon(20.0f)
-                .build());
+                .build();
         Event event = eventRepository.save(Event.builder()
                 .annotation("A".repeat(30))
                 .category(category)
