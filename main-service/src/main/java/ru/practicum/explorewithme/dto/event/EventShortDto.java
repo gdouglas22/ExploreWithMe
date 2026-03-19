@@ -16,13 +16,13 @@ import ru.practicum.explorewithme.dto.user.UserShortDto;
 @NoArgsConstructor
 @ToString
 public class EventShortDto {
-    Long id;
-    String annotation;
-    CategoryDto category;
-    Long confirmedRequests;
-    String eventDate;
-    UserShortDto initiator;
-    Boolean paid;
-    String title;
-    Long views;
+    private Long id;
+    private String annotation;
+    private CategoryDto category;
+    private Long confirmedRequests;
+    private String eventDate;
+    private UserShortDto initiator;
+    private Boolean paid;
+    private String title;
+    private Long views;
 }

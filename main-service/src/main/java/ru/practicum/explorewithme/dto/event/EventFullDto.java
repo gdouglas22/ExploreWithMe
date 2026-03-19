@@ -12,20 +12,20 @@ import ru.practicum.explorewithme.model.location.Location;
 @NoArgsConstructor
 @ToString
 public class EventFullDto {
-    Long id;
-    String annotation;
-    CategoryDto category;
-    Long confirmedRequests;
-    String createdOn;
-    String description;
-    String eventDate;
-    UserShortDto initiator;
-    Location location;
-    Boolean paid;
-    Integer participantLimit;
-    String publishedOn;
-    Boolean requestModeration;
-    String state;
-    String title;
-    Long views;
+    private Long id;
+    private String annotation;
+    private CategoryDto category;
+    private Long confirmedRequests;
+    private String createdOn;
+    private String description;
+    private String eventDate;
+    private UserShortDto initiator;
+    private Location location;
+    private Boolean paid;
+    private Integer participantLimit;
+    private String publishedOn;
+    private Boolean requestModeration;
+    private String state;
+    private String title;
+    private Long views;
 }

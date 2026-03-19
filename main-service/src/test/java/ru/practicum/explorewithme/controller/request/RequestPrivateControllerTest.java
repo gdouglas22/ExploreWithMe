@@ -26,7 +26,7 @@ class RequestPrivateControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    RequestService requestService;
+    private RequestService requestService;
 
     @Test
     void getUserRequestsShouldReturnRequestsCorrectly() throws Exception {
