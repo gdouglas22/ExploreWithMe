@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateRequest;
 import ru.practicum.explorewithme.dto.request.EventRequestStatusUpdateResult;
 import ru.practicum.explorewithme.dto.request.ParticipationRequestDto;
+import ru.practicum.explorewithme.repository.request.RequestCountProjection;
 import ru.practicum.explorewithme.exception.BadRequestException;
 import ru.practicum.explorewithme.exception.ConflictDataException;
 import ru.practicum.explorewithme.exception.NotFoundException;
@@ -18,15 +19,17 @@ import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.request.Request;
 import ru.practicum.explorewithme.model.request.Status;
 import ru.practicum.explorewithme.model.user.User;
-import ru.practicum.explorewithme.repository.RequestRepository;
+import ru.practicum.explorewithme.repository.request.RequestRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class RequestServiceImpl implements RequestService {
+    private static final int ZERO_AVALIBLE_PARTICIPANT_SLOTS = 0;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -170,13 +173,14 @@ public class RequestServiceImpl implements RequestService {
             throw new BadRequestException("Unsupported status=" + updateRequest.getStatus());
         }
 
-        if (Boolean.FALSE.equals(event.getRequestModeration()) || Objects.equals(event.getParticipantLimit(), 0)) {
+        if (Boolean.FALSE.equals(event.getRequestModeration())
+                || Objects.equals(event.getParticipantLimit(), ZERO_AVALIBLE_PARTICIPANT_SLOTS)) {
             throw new ConflictDataException("Confirmation is not required for this event");
         }
 
         long confirmedCount = countConfirmedRequestsByEventId(eventId);
         int availableSlots = event.getParticipantLimit() - (int) confirmedCount;
-        if (availableSlots <= 0) {
+        if (availableSlots <= ZERO_AVALIBLE_PARTICIPANT_SLOTS) {
             throw new ConflictDataException("Event=" + eventId + " has no available spots for participation");
         }
 
@@ -190,7 +194,7 @@ public class RequestServiceImpl implements RequestService {
         List<Request> rejectedRequests = new ArrayList<>();
 
         for (Request request : requests) {
-            if (availableSlots > 0) {
+            if (availableSlots > ZERO_AVALIBLE_PARTICIPANT_SLOTS) {
                 request.setStatus(Status.CONFIRMED);
                 confirmedRequests.add(request);
                 availableSlots--;
@@ -200,7 +204,7 @@ public class RequestServiceImpl implements RequestService {
             }
         }
 
-        if (availableSlots == 0) {
+        if (availableSlots == ZERO_AVALIBLE_PARTICIPANT_SLOTS) {
             Set<Long> handledRequestIds = requests.stream()
                     .map(Request::getId)
                     .collect(HashSet::new, HashSet::add, HashSet::addAll);
@@ -298,25 +302,27 @@ public class RequestServiceImpl implements RequestService {
 
     private Map<Long, Long> getRequestsByEventIds(Set<Long> eventIds) {
         log.info("Try to getRequestsByEventIds={}", eventIds);
-        List<Object[]> results = requestRepository.countRequestsByEventIds(eventIds);
+        List<RequestCountProjection> results = requestRepository.countRequestsByEventIds(eventIds);
         if (results.isEmpty()) {
             return new HashMap<>();
         }
-        Map<Long, Long> map = new HashMap<>();
-        for (Object[] row : results) {
-            map.put((Long) row[0], (Long) row[1]);
-        }
-        log.info("Return requestsByEventIds={}", eventIds);
-        return map;
+        return results.stream()
+                .collect(Collectors.toMap(
+                        RequestCountProjection::getEventId,
+                        RequestCountProjection::getConfirmedRequestsAmount
+                ));
     }
 
     private Map<Long, Long> getConfirmedRequestsByEventIds(Set<Long> eventIds) {
-        List<Object[]> results = requestRepository.countConfirmedRequestsByEventIds(eventIds);
-        Map<Long, Long> map = new HashMap<>();
-        for (Object[] row : results) {
-            map.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        List<RequestCountProjection> results = requestRepository.countConfirmedRequestsByEventIds(eventIds);
+        if (results.isEmpty()) {
+            return new HashMap<>();
         }
-        return map;
+        return results.stream()
+                .collect(Collectors.toMap(
+                        RequestCountProjection::getEventId,
+                        RequestCountProjection::getConfirmedRequestsAmount
+                ));
     }
 
     private Event getEventByOwnerOrThrow(Long userId, Long eventId) {

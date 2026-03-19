@@ -1,4 +1,4 @@
-package ru.practicum.explorewithme.repository;
+package ru.practicum.explorewithme.repository.request;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,24 +10,24 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface RequestRepository extends JpaRepository<Request, Long> {
-    @Query(value = "SELECT r.event_id AS eventId, COUNT(r.id) AS requestCount " +
+    @Query(value = "SELECT r.event_id AS eventId, COUNT(r.id) AS confirmedRequestsAmount " +
             "FROM requests r " +
             "WHERE r.event_id IN (:eventIds) " +
             "GROUP BY r.event_id",
             nativeQuery = true)
-    List<Object[]> countRequestsByEventIds(@Param("eventIds") Set<Long> eventIds);
+    List<RequestCountProjection> countRequestsByEventIds(@Param("eventIds") Set<Long> eventIds);
 
     @Query("SELECT COUNT(r) " +
             "FROM Request r " +
             "WHERE r.event.id = :eventId")
     Long countRequestsByEventId(@Param("eventId") Long eventId);
 
-    @Query(value = "SELECT r.event_id AS eventId, COUNT(r.id) AS requestCount " +
+    @Query(value = "SELECT r.event_id AS eventId, COUNT(r.id) AS confirmedRequestsAmount " +
             "FROM requests r " +
             "WHERE r.event_id IN (:eventIds) AND r.status = 'CONFIRMED' " +
             "GROUP BY r.event_id",
             nativeQuery = true)
-    List<Object[]> countConfirmedRequestsByEventIds(@Param("eventIds") Set<Long> eventIds);
+    List<RequestCountProjection> countConfirmedRequestsByEventIds(@Param("eventIds") Set<Long> eventIds);
 
     @Query("SELECT COUNT(r) " +
             "FROM Request r " +

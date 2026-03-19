@@ -17,6 +17,7 @@ import ru.practicum.explorewithme.model.request.Request;
 import ru.practicum.explorewithme.model.request.Status;
 import ru.practicum.explorewithme.model.user.User;
 import ru.practicum.explorewithme.repository.*;
+import ru.practicum.explorewithme.repository.request.RequestRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

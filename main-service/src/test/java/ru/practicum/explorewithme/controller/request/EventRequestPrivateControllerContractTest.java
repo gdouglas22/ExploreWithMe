@@ -25,7 +25,7 @@ import ru.practicum.explorewithme.model.user.User;
 import ru.practicum.explorewithme.repository.CategoryRepository;
 import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.LocationRepository;
-import ru.practicum.explorewithme.repository.RequestRepository;
+import ru.practicum.explorewithme.repository.request.RequestRepository;
 import ru.practicum.explorewithme.repository.UserRepository;
 
 import java.time.LocalDateTime;

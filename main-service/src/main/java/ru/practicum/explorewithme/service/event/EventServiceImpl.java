@@ -235,36 +235,36 @@ public class EventServiceImpl implements EventService {
             throw new ConflictDataException("Only pending or canceled events can be changed");
         }
 
-        if (updateEvent.hasAnnotation()) {
+        if (updateEvent.getAnnotation() != null && !updateEvent.getAnnotation().isEmpty()) {
             event.setAnnotation(updateEvent.getAnnotation());
         }
-        if (updateEvent.hasCategory()) {
+        if (updateEvent.getCategory() != null) {
             CategoryDto categoryDto = categoryService.getCateGoryById(updateEvent.getCategory());
             event.setCategory(new Category(categoryDto.id(), categoryDto.name()));
         }
-        if (updateEvent.hasDescription()) {
+        if (updateEvent.getDescription() != null && !updateEvent.getDescription().isEmpty()) {
             event.setDescription(updateEvent.getDescription());
         }
-        if (updateEvent.hasEventDate()) {
+        if (updateEvent.getEventDate() != null && !updateEvent.getEventDate().isEmpty()) {
             event.setEventDate(parseDate(updateEvent.getEventDate()));
         }
-        if (updateEvent.hasLocation()) {
+        if (updateEvent.getLocation() != null) {
             event.setLocation(LocationMapper.mapToLocation(updateEvent.getLocation()));
         }
-        if (updateEvent.hasPaid()) {
+        if (updateEvent.getPaid() != null) {
             event.setPaid(updateEvent.getPaid());
         }
-        if (updateEvent.hasParticipantLimit()) {
+        if (updateEvent.getParticipantLimit() != null) {
             checkParticipantLimit(updateEvent.getParticipantLimit());
             event.setParticipantLimit(updateEvent.getParticipantLimit());
         }
-        if (updateEvent.hasRequestModeration()) {
+        if (updateEvent.getRequestModeration() != null) {
             event.setRequestModeration(updateEvent.getRequestModeration());
         }
-        if (updateEvent.hasTitle()) {
+        if (updateEvent.getTitle() != null && !updateEvent.getTitle().isEmpty()) {
             event.setTitle(updateEvent.getTitle());
         }
-        if (updateEvent.hasStateAction()) {
+        if (updateEvent.getStateAction() != null) {
             if (updateEvent.getStateAction().equals(StateAction.SEND_TO_REVIEW)) {
                 event.setState(State.PENDING);
             } else if (updateEvent.getStateAction().equals(StateAction.CANCEL_REVIEW)) {
@@ -384,9 +384,9 @@ public class EventServiceImpl implements EventService {
 
     }
 
-    private Event validateAndUpdate(Event event, UpdateEventAdminRequest updateEventAdminRequest) {
-        if (updateEventAdminRequest.hasStateAction()) {
-            StateAction action = StateAction.valueOf(updateEventAdminRequest.getStateAction());
+    private Event validateAndUpdate(Event event, UpdateEventAdminRequest request) {
+        if (request.getStateAction() != null) {
+            StateAction action = StateAction.valueOf(request.getStateAction());
             if (action.equals(StateAction.PUBLISH_EVENT)) {
                 if (!event.getState().equals(State.PENDING)) {
                     log.info("Cannot publish the event because it's not in the right state={}", event.getState());
@@ -402,8 +402,8 @@ public class EventServiceImpl implements EventService {
             }
         }
 
-        if (updateEventAdminRequest.hasEventDate()) {
-            LocalDateTime eventDate = parseDate(updateEventAdminRequest.getEventDate());
+        if (request.getEventDate() != null && !request.getEventDate().isEmpty()) {
+            LocalDateTime eventDate = parseDate(request.getEventDate());
             if (eventDate.isBefore(LocalDateTime.now())) {
                 log.error("event date is already in the past={}", eventDate);
                 throw new BadRequestException("Event date must be in the future");
@@ -418,41 +418,41 @@ public class EventServiceImpl implements EventService {
             event.setEventDate(eventDate);
         }
 
-        if (updateEventAdminRequest.hasAnnotation()) {
-            event.setAnnotation(updateEventAdminRequest.getAnnotation());
+        if (request.getAnnotation() != null && !request.getAnnotation().isEmpty()) {
+            event.setAnnotation(request.getAnnotation());
         }
 
-        if (updateEventAdminRequest.hasCategory()) {
-            CategoryDto categoryDto = categoryService.getCateGoryById(updateEventAdminRequest.getCategory());
+        if (request.getCategory() != null) {
+            CategoryDto categoryDto = categoryService.getCateGoryById(request.getCategory());
             event.setCategory(new Category(categoryDto.id(), categoryDto.name()));
         }
 
-        if (updateEventAdminRequest.hasDescription()) {
-            event.setDescription(updateEventAdminRequest.getDescription());
+        if (request.getDescription() != null && !request.getDescription().isEmpty()) {
+            event.setDescription(request.getDescription());
         }
 
-        if (updateEventAdminRequest.hasLocation()) {
+        if (request.getLocation() != null) {
             event.setLocation(Location.builder()
-                    .lat(updateEventAdminRequest.getLocation().getLat())
-                    .lon(updateEventAdminRequest.getLocation().getLon())
+                    .lat(request.getLocation().getLat())
+                    .lon(request.getLocation().getLon())
                     .build());
         }
 
-        if (updateEventAdminRequest.hasPaid()) {
-            event.setPaid(updateEventAdminRequest.getPaid());
+        if (request.getPaid() != null) {
+            event.setPaid(request.getPaid());
         }
 
-        if (updateEventAdminRequest.hasParticipantLimit()) {
-            checkParticipantLimit(updateEventAdminRequest.getParticipantLimit());
-            event.setParticipantLimit(updateEventAdminRequest.getParticipantLimit());
+        if (request.getParticipantLimit() != null) {
+            checkParticipantLimit(request.getParticipantLimit());
+            event.setParticipantLimit(request.getParticipantLimit());
         }
 
-        if (updateEventAdminRequest.hasRequestModeration()) {
-            event.setRequestModeration(updateEventAdminRequest.getRequestModeration());
+        if (request.getRequestModeration() != null) {
+            event.setRequestModeration(request.getRequestModeration());
         }
 
-        if (updateEventAdminRequest.hasTitle()) {
-            event.setTitle(updateEventAdminRequest.getTitle());
+        if (request.getTitle() != null && !request.getTitle().isEmpty()) {
+            event.setTitle(request.getTitle());
         }
 
         return event;
