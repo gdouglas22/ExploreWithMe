@@ -1,5 +1,8 @@
 package ru.practicum.explorewithme.service.event;
 
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,8 @@ import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.event.StateAction;
 import ru.practicum.explorewithme.model.location.Location;
+import ru.practicum.explorewithme.model.request.Request;
+import ru.practicum.explorewithme.model.request.Status;
 import ru.practicum.explorewithme.model.user.User;
 import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.UserRepository;
@@ -178,14 +183,10 @@ public class EventServiceImpl implements EventService {
 
         log.info("Try to find public event in repository");
 
-        List<Event> events = eventRepository.findEventsByFilters(
-                text,
-                normalizeIds(categories),
-                paid,
-                start,
-                end,
-                Boolean.TRUE.equals(onlyAvailable)
-        );
+        Specification<Event> specification = createSpecificationByParam(text, categories,
+                paid, start, end, onlyAvailable);
+
+        List<Event> events = eventRepository.findAll(specification);
 
         log.info("Found event in repository.");
 
@@ -483,10 +484,6 @@ public class EventServiceImpl implements EventService {
         return parseNullableDate(rangeStart);
     }
 
-    private List<Long> normalizeIds(List<Long> ids) {
-        return ids == null || ids.isEmpty() ? null : ids;
-    }
-
     private LocalDateTime getEarliestDate(List<Event> events) {
         return events.stream()
                 .map(Event::getCreatedOn)
@@ -507,5 +504,66 @@ public class EventServiceImpl implements EventService {
 
     private void saveHit(String requestUri, String ip) {
         statClient.saveHit(new EndpointHit(null, appName, requestUri, ip, LocalDateTime.now()));
+    }
+
+    private Specification<Event> createSpecificationByParam(String text, List<Long> categories,
+                                                            Boolean paid, LocalDateTime start,
+                                                            LocalDateTime end, Boolean onlyAvailable) {
+
+        return (root, query, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.conjunction();
+            predicate = criteriaBuilder.and(predicate,
+                    criteriaBuilder.equal(root.get("state"), State.PUBLISHED));
+
+            if (text != null && !text.trim().isEmpty()) {
+                String searchPattern = "%" + text.toLowerCase() + "%";
+                Predicate annotationMatch = criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("annotation")), searchPattern);
+                Predicate descriptionMatch = criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("description")), searchPattern);
+                predicate = criteriaBuilder.and(predicate,
+                        criteriaBuilder.or(annotationMatch, descriptionMatch));
+            }
+
+            if (categories != null && !categories.isEmpty()) {
+                predicate = criteriaBuilder.and(predicate,
+                        root.get("category").get("id").in(categories));
+            }
+
+            if (paid != null) {
+                predicate = criteriaBuilder.and(predicate,
+                        criteriaBuilder.equal(root.get("paid"), paid));
+            }
+
+            if (start != null) {
+                predicate = criteriaBuilder.and(predicate,
+                        criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), start));
+            }
+
+            if (end != null) {
+                predicate = criteriaBuilder.and(predicate,
+                        criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), end));
+            }
+
+            if (Boolean.TRUE.equals(onlyAvailable)) {
+                Subquery<Long> requestCount = query.subquery(Long.class);
+                Root<Request> requestRoot = requestCount.from(Request.class);
+                requestCount.select(criteriaBuilder.count(requestRoot))
+                        .where(
+                                criteriaBuilder.equal(requestRoot.get("event"), root),
+                                criteriaBuilder.equal(requestRoot.get("status"), Status.CONFIRMED)
+                        );
+
+                predicate = criteriaBuilder.and(predicate,
+                        criteriaBuilder.or(
+                                criteriaBuilder.isNull(root.get("participantLimit")),
+                                criteriaBuilder.equal(root.get("participantLimit"), 0),
+                                criteriaBuilder.greaterThan(root.get("participantLimit"), requestCount)
+                        )
+                );
+            }
+
+            return predicate;
+        };
     }
 }
