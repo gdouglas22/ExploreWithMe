@@ -5,6 +5,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.dto.comment.CommentDto;
@@ -24,6 +27,8 @@ import ru.practicum.explorewithme.repository.request.RequestRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -58,39 +63,38 @@ class CommentServiceImplTest {
 
     private Event savedEvent;
 
-    private Event savedFutureEvent;
+    private Request savedRequest;
+
+    private String commentText;
+
+    private NewComment newComment;
 
     @BeforeEach
     void createDataInDB() {
         Category category = Category.builder()
-                .id(1L)
                 .name("category")
                 .build();
         Category savedCategory = categoryRepository.save(category);
 
         User user1 = User.builder()
-                .id(1L)
                 .name("initiator_user")
                 .email("initiator_user@test.ru")
                 .build();
         eventInitiator = userRepository.save(user1);
 
         User user2 = User.builder()
-                .id(2L)
                 .name("requestor_user")
                 .email("requestor_user@test.ru")
                 .build();
         eventVisitor = userRepository.save(user2);
 
         Location location = Location.builder()
-                .id(1L)
                 .lat(1.1f)
                 .lon(2.2f)
                 .build();
         Location savedLocation = locationRepository.save(location);
 
         Event event1 = Event.builder()
-                .id(1L)
                 .annotation("first_annotation")
                 .category(savedCategory)
                 .createdOn(LocalDateTime.now().minusHours(5))
@@ -107,38 +111,21 @@ class CommentServiceImplTest {
                 .build();
         savedEvent = eventRepository.save(event1);
 
-        Event event2 = Event.builder()
-                .id(1L)
-                .annotation("first_annotation")
-                .category(savedCategory)
-                .createdOn(LocalDateTime.now().minusHours(5))
-                .description("first_description")
-                .eventDate(LocalDateTime.now().plusHours(2))
-                .initiator(eventInitiator)
-                .location(savedLocation)
-                .paid(true)
-                .participantLimit(10)
-                .publishedOn(LocalDateTime.now().minusHours(4))
-                .requestModeration(true)
-                .state(State.PENDING)
-                .title("test_title")
-                .build();
-        savedFutureEvent = eventRepository.save(event2);
-    }
-
-    @Test
-    void createCommentShouldCreateCommentCorrectly() throws Exception {
         Request request = Request.builder()
                 .created(savedEvent.getPublishedOn().plusMinutes(5))
                 .event(savedEvent)
                 .requester(eventVisitor)
                 .status(Status.CONFIRMED)
                 .build();
-        requestRepository.save(request);
+        savedRequest = requestRepository.save(request);
 
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
-        CommentDto resultComment = commentService.createComment(eventVisitor.getId(), savedEvent.getId(), newComment);
+        commentText = "test comment".repeat(20);
+        newComment = new NewComment(commentText);
+    }
+
+    @Test
+    void createShouldCreateCommentCorrectly() throws Exception {
+        CommentDto resultComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
 
         Assertions.assertNotNull(resultComment.getId());
         Assertions.assertEquals(commentText, resultComment.getText());
@@ -149,100 +136,191 @@ class CommentServiceImplTest {
     }
 
     @Test
-    void createCommentShouldThrowNotFoundWhenNoUserInDB() throws Exception {
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
-
+    void createShouldThrowNotFoundWhenNoUserInDB() throws Exception {
         NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
-                () -> commentService.createComment(1000L, savedEvent.getId(), newComment));
+                () -> commentService.create(1000L, savedEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains("Couldn't find user by id=1000"));
     }
 
     @Test
-    void createCommentShouldThrowNotFoundWhenNoEventInDB() throws Exception {
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
-
+    void createShouldThrowNotFoundWhenNoEventInDB() throws Exception {
         NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
-                () -> commentService.createComment(eventVisitor.getId(), 1000L, newComment));
+                () -> commentService.create(eventVisitor.getId(), 1000L, newComment));
         Assertions.assertTrue(exception.getMessage().contains("Couldn't find event by id=1000"));
     }
 
     @Test
-    void createCommentShouldThrowConflictWhenEventOwnerCreateComment() throws Exception {
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
-
+    void createShouldThrowConflictWhenEventOwnerCreateComment() throws Exception {
         ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
-                () -> commentService.createComment(eventInitiator.getId(), savedEvent.getId(), newComment));
+                () -> commentService.create(eventInitiator.getId(), savedEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains("User cant create comment for his event"));
     }
 
     @Test
-    void createCommentShouldThrowNotFoundWhenNoRequestFromEventVisitor() throws Exception {
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
-
+    void createShouldThrowNotFoundWhenNoRequestFromEventVisitor() throws Exception {
+        requestRepository.deleteById(savedRequest.getId());
         NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
-                () -> commentService.createComment(eventVisitor.getId(), savedEvent.getId(), newComment));
+                () -> commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains(("Couldn't find request from requestorId="
                 + eventVisitor.getId() + " to eventId=" + savedEvent.getId())));
     }
 
     @Test
-    void createCommentShouldThrowConflictWhenRequestNotConfirmed() throws Exception {
-        Request request = Request.builder()
-                .created(savedEvent.getPublishedOn().plusMinutes(5))
-                .event(savedEvent)
-                .requester(eventVisitor)
-                .status(Status.REJECTED)
-                .build();
-        requestRepository.save(request);
-
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
+    void createShouldThrowConflictWhenRequestNotConfirmed() throws Exception {
+        savedRequest.setStatus(Status.REJECTED);
+        requestRepository.save(savedRequest);
 
         ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
-                () -> commentService.createComment(eventVisitor.getId(), savedEvent.getId(), newComment));
+                () -> commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains(("Create comment can only event's visitor")));
     }
 
     @Test
-    void createCommentShouldThrowConflictWhenCommentBeforeEventDate() throws Exception {
-        Request request = Request.builder()
-                .created(savedFutureEvent.getPublishedOn().plusMinutes(5))
-                .event(savedFutureEvent)
-                .requester(eventVisitor)
-                .status(Status.CONFIRMED)
-                .build();
-        requestRepository.save(request);
-
-        String commentText = "test comment".repeat(20);
-        NewComment newComment = new NewComment(commentText);
+    void createShouldThrowConflictWhenCommentBeforeEventDate() throws Exception {
+        savedEvent.setEventDate(LocalDateTime.now().plusHours(10));
+        eventRepository.save(savedEvent);
 
         ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
-                () -> commentService.createComment(eventVisitor.getId(), savedFutureEvent.getId(), newComment));
+                () -> commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains(("Comments can be left only after the event begins")));
     }
 
     @Test
-    void createCommentShouldThrowConflictWhenCreateOneMoreComment() throws Exception {
-        Request request = Request.builder()
-                .created(savedEvent.getPublishedOn().plusMinutes(5))
-                .event(savedEvent)
-                .requester(eventVisitor)
-                .status(Status.CONFIRMED)
-                .build();
-        requestRepository.save(request);
-        String commentText = "test comment".repeat(20);
+    void createShouldThrowConflictWhenCreateOneMoreComment() throws Exception {
         Comment comment = new Comment(100L, commentText, savedEvent, eventVisitor, LocalDateTime.now());
         commentRepository.save(comment);
 
-        NewComment newComment = new NewComment(commentText);
-
         ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
-                () -> commentService.createComment(eventVisitor.getId(), savedEvent.getId(), newComment));
+                () -> commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains(("Comment has already in DB from userId="
                 + eventVisitor.getId() + " to eventId=" + savedEvent.getId())));
+    }
+
+    @Test
+    void updateShouldUpdateCommentCorrectly() throws Exception {
+        Long commentId = 100L;
+
+        Comment comment = new Comment(commentId, commentText, savedEvent, eventVisitor, LocalDateTime.now());
+        Comment savedComment = commentRepository.save(comment);
+
+        NewComment updateComment = new NewComment("updateInfo".repeat(20));
+
+        CommentDto resultComment = commentService.update(eventVisitor.getId(),
+                savedComment.getId(), updateComment);
+
+        Assertions.assertNotNull(resultComment.getId());
+        Assertions.assertEquals(updateComment.getText(), resultComment.getText());
+        Assertions.assertEquals(savedEvent.getId(), resultComment.getEvent());
+        Assertions.assertEquals(eventVisitor.getId(), resultComment.getUser());
+        Assertions.assertTrue(LocalDateTime.parse(resultComment.getCreatedOn(), customFormatter)
+                .isAfter(LocalDateTime.now().minusHours(1)));
+    }
+
+    @Test
+    void updateShouldThrowNotFoundWhenIncorrectCommentId() throws Exception {
+        Long commentId = 100L;
+
+        NewComment updateComment = new NewComment("updateInfo".repeat(20));
+
+        NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
+                () -> commentService.update(eventVisitor.getId(), commentId, updateComment));
+        Assertions.assertTrue(exception.getMessage().contains(("Couldn't find comment by id=" + commentId)));
+    }
+
+    @Test
+    void updateShouldThrowConflictWhenUserIsNotAuthor() throws Exception {
+        Long commentId = 100L;
+
+        Comment comment = new Comment(commentId, commentText, savedEvent, eventVisitor, LocalDateTime.now());
+        Comment savedComment = commentRepository.save(comment);
+
+        NewComment updateComment = new NewComment("updateInfo".repeat(20));
+
+        ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
+                () -> commentService.update(1000L, savedComment.getId(), updateComment));
+        Assertions.assertTrue(exception.getMessage().contains(("Edit comment can only author")));
+    }
+
+    @Test
+    void updateShouldThrowConflictWhenCommentNotAvailableToEdit() throws Exception {
+        Long commentId = 100L;
+
+        Comment comment = new Comment(commentId, commentText, savedEvent, eventVisitor,
+                LocalDateTime.now().minusDays(2));
+        Comment savedComment = commentRepository.save(comment);
+
+        NewComment updateComment = new NewComment("updateInfo".repeat(20));
+
+        ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
+                () -> commentService.update(eventVisitor.getId(), savedComment.getId(), updateComment));
+        Assertions.assertTrue(exception.getMessage().contains(("Comment available to edit only 24 after publishing")));
+    }
+
+    @Test
+    void deleteShouldDeleteCommentCorrectly() throws Exception {
+        CommentDto resultComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        commentService.delete(resultComment.getUser(), resultComment.getId());
+
+        Optional<Comment> deletedComment = commentRepository.findById(resultComment.getId());
+
+        Assertions.assertTrue(deletedComment.isEmpty());
+    }
+
+    @Test
+    void deleteShouldThrowNotFoundWhenCommentIdIncorrect() throws Exception {
+        CommentDto resultComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
+                () -> commentService.delete(resultComment.getUser(), 1000L));
+        Assertions.assertTrue(exception.getMessage().contains(("Couldn't find comment by id=" + 1000L)));
+    }
+
+    @Test
+    void deleteShouldThrowNotFoundWhenAuthorIdIncorrect() throws Exception {
+        CommentDto resultComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
+                () -> commentService.delete(1000L, resultComment.getId()));
+        Assertions.assertTrue(exception.getMessage().contains("Edit comment can only author"));
+    }
+
+    @Test
+    void deleteShouldThrowNotFoundWhenCommentNotAvailableToDelete() throws Exception {
+        CommentDto resultComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+        Comment comment = new Comment(resultComment.getId(), newComment.getText(),
+                savedEvent, eventVisitor, LocalDateTime.now().minusDays(2));
+        commentRepository.save(comment);
+
+        ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
+                () -> commentService.delete(eventVisitor.getId(), resultComment.getId()));
+        Assertions.assertTrue(exception.getMessage().contains("Comment available to edit only 24 after publishing"));
+    }
+
+    @Test
+    void getAllShouldReturnPageWithDataCorrectly() throws Exception {
+        CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        Page<CommentDto> page = commentService.getAll(eventVisitor.getId(), pageable);
+        List<CommentDto> list = page.getContent();
+        CommentDto resultCommentDto = list.getFirst();
+
+        Assertions.assertEquals(1, list.size());
+        Assertions.assertEquals(savedComment.getId(), resultCommentDto.getId());
+        Assertions.assertEquals(savedComment.getEvent(), resultCommentDto.getEvent());
+        Assertions.assertEquals(savedComment.getUser(), resultCommentDto.getUser());
+        Assertions.assertEquals(savedComment.getText(), resultCommentDto.getText());
+        Assertions.assertEquals(savedComment.getCreatedOn(), resultCommentDto.getCreatedOn());
+    }
+
+    @Test
+    void getAllShouldReturnEmptyPageCorrectly() throws Exception {
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        Page<CommentDto> page = commentService.getAll(eventVisitor.getId(), pageable);
+        List<CommentDto> list = page.getContent();
+
+        Assertions.assertTrue(list.isEmpty());
     }
 }

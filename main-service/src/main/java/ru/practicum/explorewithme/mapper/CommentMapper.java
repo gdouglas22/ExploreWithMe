@@ -23,6 +23,15 @@ public class CommentMapper {
                 .build();
     }
 
+    public static Comment toComment(Comment comment, NewComment newComment) {
+        return Comment.builder()
+                .text(newComment.getText())
+                .createdOn(comment.getCreatedOn())
+                .user(comment.getUser())
+                .event(comment.getEvent())
+                .build();
+    }
+
     public CommentDto toDto(Comment comment) {
         return CommentDto.builder()
                 .id(comment.getId())
