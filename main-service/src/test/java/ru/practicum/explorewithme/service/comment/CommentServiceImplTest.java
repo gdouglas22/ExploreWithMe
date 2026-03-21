@@ -12,16 +12,14 @@ import ru.practicum.explorewithme.dto.comment.NewComment;
 import ru.practicum.explorewithme.exception.ConflictDataException;
 import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.model.category.Category;
+import ru.practicum.explorewithme.model.comment.Comment;
 import ru.practicum.explorewithme.model.event.Event;
 import ru.practicum.explorewithme.model.event.State;
 import ru.practicum.explorewithme.model.location.Location;
 import ru.practicum.explorewithme.model.request.Request;
 import ru.practicum.explorewithme.model.request.Status;
 import ru.practicum.explorewithme.model.user.User;
-import ru.practicum.explorewithme.repository.CategoryRepository;
-import ru.practicum.explorewithme.repository.EventRepository;
-import ru.practicum.explorewithme.repository.LocationRepository;
-import ru.practicum.explorewithme.repository.UserRepository;
+import ru.practicum.explorewithme.repository.*;
 import ru.practicum.explorewithme.repository.request.RequestRepository;
 
 import java.time.LocalDateTime;
@@ -50,6 +48,9 @@ class CommentServiceImplTest {
 
     @Autowired
     private LocationRepository locationRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
 
     private User eventVisitor;
 
@@ -222,5 +223,26 @@ class CommentServiceImplTest {
         ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
                 () -> commentService.createComment(eventVisitor.getId(), savedFutureEvent.getId(), newComment));
         Assertions.assertTrue(exception.getMessage().contains(("Comments can be left only after the event begins")));
+    }
+
+    @Test
+    void createCommentShouldThrowConflictWhenCreateOneMoreComment() throws Exception {
+        Request request = Request.builder()
+                .created(savedEvent.getPublishedOn().plusMinutes(5))
+                .event(savedEvent)
+                .requester(eventVisitor)
+                .status(Status.CONFIRMED)
+                .build();
+        requestRepository.save(request);
+        String commentText = "test comment".repeat(20);
+        Comment comment = new Comment(100L, commentText, savedEvent, eventVisitor, LocalDateTime.now());
+        commentRepository.save(comment);
+
+        NewComment newComment = new NewComment(commentText);
+
+        ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
+                () -> commentService.createComment(eventVisitor.getId(), savedEvent.getId(), newComment));
+        Assertions.assertTrue(exception.getMessage().contains(("Comment has already in DB from userId="
+                + eventVisitor.getId() + " to eventId=" + savedEvent.getId())));
     }
 }

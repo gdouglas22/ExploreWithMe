@@ -39,6 +39,7 @@ public class CommentServiceImpl implements CommentService {
         User user = getUserFromDB(userId);
         Event event = getEventFromDB(eventId);
         checkUserNotEventOwner(event, user);
+        checkNoCommentFromUserToEvent(userId, eventId);
         Request request = getRequestFromDB(event, user);
         checkRequestWasConfirmed(request);
         checkEventWasStarted(event);
@@ -46,6 +47,14 @@ public class CommentServiceImpl implements CommentService {
         Comment saveComment = commentRepository.save(comment);
         log.info("Comment was saved");
         return CommentMapper.toDto(saveComment);
+    }
+
+    private void checkNoCommentFromUserToEvent(Long userId, Long eventId) {
+        Optional<Comment> commentOptional = commentRepository.findByUserIdAndEventId(userId, eventId);
+        if (commentOptional.isPresent()) {
+            throw new ConflictDataException("Comment has already in DB from userId=" + userId
+                    + " to eventId=" + eventId);
+        }
     }
 
     private void checkEventWasStarted(Event event) {
