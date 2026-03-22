@@ -298,6 +298,76 @@ class CommentServiceImplTest {
     }
 
     @Test
+    void deleteByAdminShouldDeleteCommentCorrectly() throws Exception {
+        CommentDto resultComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        commentService.deleteByAdmin(resultComment.getId());
+
+        Optional<Comment> deletedComment = commentRepository.findById(resultComment.getId());
+
+        Assertions.assertTrue(deletedComment.isEmpty());
+    }
+
+    @Test
+    void deleteByAdminShouldThrowNotFoundWhenCommentIdIncorrect() {
+        NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
+                () -> commentService.deleteByAdmin(1000L));
+        Assertions.assertTrue(exception.getMessage().contains("Couldn't find comment by id=1000"));
+    }
+
+    @Test
+    void getByIdShouldReturnCommentCorrectly() throws Exception {
+        CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        CommentDto resultComment = commentService.getById(savedComment.getId());
+
+        Assertions.assertEquals(savedComment, resultComment);
+    }
+
+    @Test
+    void getByIdShouldThrowNotFoundWhenCommentIdIncorrect() {
+        NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
+                () -> commentService.getById(1000L));
+        Assertions.assertTrue(exception.getMessage().contains("Couldn't find comment by id=1000"));
+    }
+
+    @Test
+    void getAllByEventShouldReturnPageWithDataCorrectly() throws Exception {
+        CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        Page<CommentDto> page = commentService.getAllByEvent(savedEvent.getId(), pageable);
+        List<CommentDto> list = page.getContent();
+        CommentDto resultCommentDto = list.getFirst();
+
+        Assertions.assertEquals(1, list.size());
+        Assertions.assertEquals(savedComment.getId(), resultCommentDto.getId());
+        Assertions.assertEquals(savedComment.getEvent(), resultCommentDto.getEvent());
+        Assertions.assertEquals(savedComment.getUser(), resultCommentDto.getUser());
+        Assertions.assertEquals(savedComment.getText(), resultCommentDto.getText());
+        Assertions.assertEquals(savedComment.getCreatedOn(), resultCommentDto.getCreatedOn());
+    }
+
+    @Test
+    void getAllByEventShouldReturnEmptyPageCorrectly() {
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        Page<CommentDto> page = commentService.getAllByEvent(savedEvent.getId(), pageable);
+        List<CommentDto> list = page.getContent();
+
+        Assertions.assertTrue(list.isEmpty());
+    }
+
+    @Test
+    void getAllByEventShouldThrowNotFoundWhenEventIdIncorrect() {
+        Pageable pageable = PageRequest.of(0 / 10, 10);
+
+        NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
+                () -> commentService.getAllByEvent(1000L, pageable));
+        Assertions.assertTrue(exception.getMessage().contains("Couldn't find event by id=1000"));
+    }
+
+    @Test
     void getAllShouldReturnPageWithDataCorrectly() throws Exception {
         CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
         Pageable pageable = PageRequest.of(0 / 10, 10);

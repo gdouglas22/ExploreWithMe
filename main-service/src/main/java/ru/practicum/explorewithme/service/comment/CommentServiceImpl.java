@@ -76,9 +76,34 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
+    public void deleteByAdmin(Long commentId) {
+        log.info("Try to delete comment by admin commentId={}", commentId);
+        Comment comment = getCommentFromDB(commentId);
+        commentRepository.delete(comment);
+        log.info("Comment was deleted by admin");
+    }
+
+    @Override
+    public CommentDto getById(Long commentId) {
+        log.info("Try to get comment by id={}", commentId);
+        Comment comment = getCommentFromDB(commentId);
+        return CommentMapper.toDto(comment);
+    }
+
+    @Override
+    public Page<CommentDto> getAllByEvent(Long eventId, Pageable pageable) {
+        log.info("Try to get all comments by eventId={}, pageable={}", eventId, pageable);
+        getEventFromDB(eventId);
+        Page<Comment> comments = commentRepository.findAllByEventId(eventId, pageable);
+        log.info("Get all comments by eventId={}", eventId);
+        return comments.map(CommentMapper::toDto);
+    }
+
+    @Override
     public Page<CommentDto> getAll(Long userId, Pageable pageable) {
         log.info("Try to get all comments userId={}, pageable={}", userId, pageable);
-        User user = getUserFromDB(userId);
+        getUserFromDB(userId);
         Page<Comment> comments = commentRepository.findAllByUserId(userId, pageable);
         log.info("Get all comments");
         return comments.map(CommentMapper::toDto);
