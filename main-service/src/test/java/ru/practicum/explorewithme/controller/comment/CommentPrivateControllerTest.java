@@ -162,6 +162,31 @@ class CommentPrivateControllerTest {
     }
 
     @Test
+    void getByIdShouldReturnCommentCorrectly() throws Exception {
+        String dateTime = LocalDateTime.now().format(customFormatter);
+        CommentDto expectedComment = CommentDto.builder()
+                .id(1L)
+                .text("test text".repeat(20))
+                .user(10L)
+                .event(20L)
+                .createdOn(dateTime)
+                .build();
+
+        Mockito.when(commentService.getByUserIdAndId(10L, 1L)).thenReturn(expectedComment);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/users/10/comments/1"))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.id").value(1))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.text").value("test text".repeat(20)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.user").value(10))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.event").value(20))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.createdOn").value(dateTime));
+
+        Mockito.verify(commentService, Mockito.times(1)).getByUserIdAndId(10L, 1L);
+    }
+
+    @Test
     void deleteShouldDeleteCommentCorrectly() throws Exception {
 
         Mockito.doNothing().when(commentService).delete(10L, 1L);

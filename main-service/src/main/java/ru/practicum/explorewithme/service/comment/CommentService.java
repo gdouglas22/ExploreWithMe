@@ -14,6 +14,8 @@ public interface CommentService {
 
     void deleteByAdmin(Long commentId);
 
+    CommentDto getByUserIdAndId(Long userId, Long commentId);
+
     CommentDto getById(Long commentId);
 
     Page<CommentDto> getAllByEvent(Long eventId, Pageable pageable);

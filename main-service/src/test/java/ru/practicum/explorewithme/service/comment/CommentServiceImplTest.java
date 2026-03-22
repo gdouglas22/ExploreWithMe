@@ -306,6 +306,25 @@ class CommentServiceImplTest {
     }
 
     @Test
+    void getByUserIdAndIdShouldReturnCommentCorrectly() throws Exception {
+        CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        CommentDto resultComment = commentService.getByUserIdAndId(eventVisitor.getId(), savedComment.getId());
+
+        Assertions.assertEquals(savedComment, resultComment);
+    }
+
+    @Test
+    void getByUserIdAndIdShouldThrowNotFoundWhenCommentBelongsAnotherUser() throws Exception {
+        CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
+
+        NotFoundException exception = Assertions.assertThrows(NotFoundException.class,
+                () -> commentService.getByUserIdAndId(eventInitiator.getId(), savedComment.getId()));
+        Assertions.assertTrue(exception.getMessage().contains("Couldn't find comment by id="
+                + savedComment.getId() + " for userId=" + eventInitiator.getId()));
+    }
+
+    @Test
     void getByIdShouldReturnCommentCorrectly() throws Exception {
         CommentDto savedComment = commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment);
 
