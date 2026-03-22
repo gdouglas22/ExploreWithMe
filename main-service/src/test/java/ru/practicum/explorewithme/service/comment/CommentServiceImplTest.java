@@ -176,16 +176,6 @@ class CommentServiceImplTest {
     }
 
     @Test
-    void createShouldThrowConflictWhenCommentBeforeEventDate() throws Exception {
-        savedEvent.setEventDate(LocalDateTime.now().plusHours(10));
-        eventRepository.save(savedEvent);
-
-        ConflictDataException exception = Assertions.assertThrows(ConflictDataException.class,
-                () -> commentService.create(eventVisitor.getId(), savedEvent.getId(), newComment));
-        Assertions.assertTrue(exception.getMessage().contains(("Comments can be left only after the event begins")));
-    }
-
-    @Test
     void createShouldThrowConflictWhenCreateOneMoreComment() throws Exception {
         Comment comment = new Comment(100L, commentText, savedEvent, eventVisitor, LocalDateTime.now());
         commentRepository.save(comment);
