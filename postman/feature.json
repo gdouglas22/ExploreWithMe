@@ -419,7 +419,7 @@
           "response": []
         },
         {
-          "name": "Добавление комментария",
+          "name": "Private / Добавление комментария",
           "event": [
             {
               "listen": "prerequest",
