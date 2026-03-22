@@ -85,6 +85,17 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    public CommentDto getByUserIdAndId(Long userId, Long commentId) {
+        log.info("Try to get comment by userId={}, commentId={}", userId, commentId);
+        getUserFromDB(userId);
+        Comment comment = getCommentFromDB(commentId);
+        if (!comment.getUser().getId().equals(userId)) {
+            throw new NotFoundException("Couldn't find comment by id=" + commentId + " for userId=" + userId);
+        }
+        return CommentMapper.toDto(comment);
+    }
+
+    @Override
     public CommentDto getById(Long commentId) {
         log.info("Try to get comment by id={}", commentId);
         Comment comment = getCommentFromDB(commentId);

@@ -42,6 +42,15 @@ public class CommentPrivateController {
                 .body(commentDto);
     }
 
+    @GetMapping("/{commentId}")
+    public ResponseEntity<CommentDto> getById(@PathVariable Long userId,
+                                              @PathVariable Long commentId) {
+        CommentDto commentDto = commentService.getByUserIdAndId(userId, commentId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(commentDto);
+    }
+
     @DeleteMapping("/{commentId}")
     public ResponseEntity<Void> delete(@PathVariable Long userId,
                                        @PathVariable Long commentId) {
