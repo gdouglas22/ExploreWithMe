@@ -122,7 +122,6 @@ public class RequestServiceImpl implements RequestService {
         Request savedRequest = requestRepository.save(newRequest);
         ParticipationRequestDto requestDto = RequestMapper.toParticipationRequestDto(savedRequest);
 
-        System.out.println("request DTO =" + requestDto);
         log.info("Save request={}", requestDto);
 
         return requestDto;

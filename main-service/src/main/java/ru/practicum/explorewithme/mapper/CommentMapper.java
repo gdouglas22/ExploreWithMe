@@ -29,6 +29,7 @@ public class CommentMapper {
                 .createdOn(comment.getCreatedOn())
                 .user(comment.getUser())
                 .event(comment.getEvent())
+                .id(comment.getId())
                 .build();
     }
 

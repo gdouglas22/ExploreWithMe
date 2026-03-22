@@ -45,7 +45,6 @@ public class CommentServiceImpl implements CommentService {
         checkNoCommentFromUserToEvent(userId, eventId);
         Request request = getRequestFromDB(event, user);
         checkRequestWasConfirmed(request);
-        checkEventWasStarted(event);
         Comment comment = CommentMapper.toComment(newComment, user, event);
         Comment saveComment = commentRepository.save(comment);
         log.info("Comment was saved");
@@ -65,6 +64,7 @@ public class CommentServiceImpl implements CommentService {
         return CommentMapper.toDto(savedComment);
     }
 
+    @Transactional
     @Override
     public void delete(Long userId, Long commentId) {
         log.info("Try to delete comment commentId={}, userId={}", commentId, userId);
@@ -132,12 +132,6 @@ public class CommentServiceImpl implements CommentService {
         if (commentOptional.isPresent()) {
             throw new ConflictDataException("Comment has already in DB from userId=" + userId
                     + " to eventId=" + eventId);
-        }
-    }
-
-    private void checkEventWasStarted(Event event) {
-        if (event.getEventDate().isAfter(LocalDateTime.now())) {
-            throw new ConflictDataException("Comments can be left only after the event begins");
         }
     }
 
